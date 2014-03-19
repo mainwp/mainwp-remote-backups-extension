@@ -1,0 +1,9 @@
+
+.backup_destination_test .loading
+{
+    display: none;
+}
+.backup_destination_test .loading img
+{
+    margin-bottom: -2px;
+}
