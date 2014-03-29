@@ -6,8 +6,8 @@ class MainWPRemoteBackupSystem
 
     public function init()
     {
-        add_action('mainwp_postprocess_backup_site', array(&$this, 'mainwp_postprocess_backup_site'));
-        add_filter('mainwp_postprocess_backup_sites_feedback', array(&$this, 'mainwp_postprocess_backup_sites_feedback'));
+        add_action('mainwp_postprocess_backup_site', array(&$this, 'mainwp_postprocess_backup_site'), 10, 7);
+        add_filter('mainwp_postprocess_backup_sites_feedback', array(&$this, 'mainwp_postprocess_backup_sites_feedback'), 10, 2);
         add_filter('mainwp_backuptask_column_destination', array(&$this, 'mainwp_backuptask_column_destination'), 10, 2);
         add_filter('mainwp_backuptask_remotedestinations', array(&$this, 'mainwp_backuptask_remotedestinations'), 10, 2);
         add_action('mainwp_remote_backup_extension_backup_upload_file', array(&$this,'mainwp_backup_upload_file'));
@@ -411,7 +411,7 @@ class MainWPRemoteBackupSystem
             try
             {
                 $remoteDestination = MainWPRemoteDestination::buildRemoteDestination($remote_destination_from_db);
-                if ($remoteDestination->upload($localBackupFile, $what, $subfolder, $regexBackupFile, $website))
+                if ($remoteDestination->upload($localBackupFile, $what, $subfolder, $regexBackupFile, $website->id))
                 {
                     $backup_result[$remoteDestination->getType()] = 'success';
                 }
