@@ -22,6 +22,11 @@ class MainWPRemoteBackupExtension
         return MainWPRemoteBackupExtension::$instance;
     }
 
+    static function isActivated()
+    {
+        return self::$instance != null;
+    }
+
     public function __construct()
     {
 		$this->plugin_url = plugin_dir_url(__FILE__);
@@ -43,9 +48,16 @@ class MainWPRemoteBackupExtension
         add_filter('mainwp_backups_remote_get_destinations', array('MainWPRemoteDestinationUI', 'mainwp_backups_remote_get_destinations'), 10, 2);
 
         add_action('mainwp_remote_backup_extension_cronremotedestinationcheck_action', array('MainWPRemoteBackupSystem', 'mainwp_remote_backup_extension_cronremotedestinationcheck_action'));
-        if (!wp_next_scheduled('mainwp_remote_backup_extension_cronremotedestinationcheck_action')) {
-             wp_schedule_event(time(), 'daily', 'mainwp_remote_backup_extension_cronremotedestinationcheck_action');
-         }
+
+        $useWPCron = (get_option('mainwp_wp_cron') === false) || (get_option('mainwp_wp_cron') == 1);
+        if (($sched = wp_next_scheduled('mainwp_remote_backup_extension_cronremotedestinationcheck_action')) == false)
+        {
+            if ($useWPCron) wp_schedule_event(time(), 'daily', 'mainwp_remote_backup_extension_cronremotedestinationcheck_action');
+        }
+        else
+        {
+            if (!$useWPCron) wp_unschedule_event($sched, 'mainwp_remote_backup_extension_cronremotedestinationcheck_action');
+        }
 	}
 
     public function activate()
