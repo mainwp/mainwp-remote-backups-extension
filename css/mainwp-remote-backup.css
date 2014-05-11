@@ -7,3 +7,11 @@
 {
     margin-bottom: -2px;
 }
+
+/* fix for conflict css */
+.ui-dialog{
+    z-index: 999999 !important;    
+}
+.ui-widget-overlay {
+    background: url("images/ui-bg_flat_0_aaaaaa_40x100.png") repeat-x scroll 50% 50% #AAAAAA !important;
+}
