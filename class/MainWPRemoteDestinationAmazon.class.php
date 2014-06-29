@@ -26,6 +26,11 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
         return $this->object->field4;
     }
 
+    public function getIdentifier()
+    {
+        return $this->object->id;
+    }
+
     /**
      * @param $amazon S3
      * @param $pLocalbackupfile
@@ -113,7 +118,7 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
 
             if ($pSiteId != null)
             {
-                $backups = MainWPRemoteBackupDB::Instance()->getRemoteBackups($pSiteId, $this->getType());
+                $backups = MainWPRemoteBackupDB::Instance()->getRemoteBackups($pSiteId, $this->getType(), $this->getIdentifier());
                 $backups = is_object($backups) ? json_decode($backups->backups, true) : null;
 
                 if (!is_array($backups)) $backups = array();
@@ -128,7 +133,7 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
                 array_push($backupsTaken, basename($pLocalbackupfile));
                 $backups[$pType] = $backupsTaken;
 
-                MainWPRemoteBackupDB::Instance()->updateRemoteBackups($pSiteId, $this->getType(), $backups);
+                MainWPRemoteBackupDB::Instance()->updateRemoteBackups($pSiteId, $this->getType(), $this->getIdentifier(), $backups);
             }
             return true;
         }

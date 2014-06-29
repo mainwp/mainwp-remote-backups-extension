@@ -21,6 +21,11 @@ class MainWPRemoteDestinationDropbox extends MainWPRemoteDestination
         return $this->object->field3;
     }
 
+    public function getIdentifier()
+    {
+        return $this->getUsername();
+    }
+
     public function limitFiles($ftp, $pLocalbackupfile, $pRegexFile, &$backupFiles, $dir = null)
     {
         return true;

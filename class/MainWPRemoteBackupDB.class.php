@@ -3,7 +3,7 @@
 class MainWPRemoteBackupDB
 {
     //Config
-    private $mainwp_remote_backup_extension_db_version = '1.0';
+    private $mainwp_remote_backup_extension_db_version = '1.1';
     //Private
     private $table_prefix;
     //Singleton
@@ -85,7 +85,8 @@ class MainWPRemoteBackupDB
         $tbl = 'CREATE TABLE `' . $this->tableName('wp_remote_backups') . '` (
   `wpid` int(11) NOT NULL,
   `backuptype` varchar(20) NOT NULL,
-  `backups` text NOT NULL';
+  `backups` text NOT NULL,
+  `dest_identifier` text NOT NULL';
         if ($currentVersion === false || $currentVersion == '') $tbl .= ',
   PRIMARY KEY  (wpid,backuptype)  ';
         $tbl .= ')';
@@ -123,34 +124,43 @@ class MainWPRemoteBackupDB
         }
     }
 
-    public function insertRemoteBackups($wpId, $backupType, $backups)
+    public function insertRemoteBackups($wpId, $backupType, $identifier, $backups)
     {
         /** @var $wpdb wpdb */
         global $wpdb;
 
-        return $wpdb->insert($this->tableName('wp_remote_backups'), array('wpid' => $wpId, 'backuptype' => $backupType, 'backups' => json_encode($backups)));
+        return $wpdb->insert($this->tableName('wp_remote_backups'), array('wpid' => $wpId, 'backuptype' => $backupType, 'dest_identifier' => $identifier, 'backups' => json_encode($backups)));
     }
 
-    public function getRemoteBackups($wpId, $backupType)
+    public function getRemoteBackups($wpId, $backupType, $identifier)
     {
         /** @var $wpdb wpdb */
         global $wpdb;
 
-        return $wpdb->get_row('SELECT * FROM ' . $this->tableName('wp_remote_backups') . ' WHERE wpid = ' . $wpId . ' AND backuptype = "'.$backupType.'"', OBJECT);
+        return $wpdb->get_row('SELECT * FROM ' . $this->tableName('wp_remote_backups') . ' WHERE wpid = ' . $wpId . ' AND backuptype = "'.$backupType.'" AND (dest_identifier is null or dest_identifier = "" or dest_identifier = "' . esc_sql($identifier) . '")', OBJECT);
     }
 
-    public function updateRemoteBackups($wpId, $backupType, $backups)
+    public function updateRemoteBackups($wpId, $backupType, $identifier, $backups)
     {
         /** @var $wpdb wpdb */
         global $wpdb;
 
-        if ($this->getRemoteBackups($wpId, $backupType) == null)
+        $remoteBackups = $this->getRemoteBackups($wpId, $backupType, $identifier);
+        if ($remoteBackups == null)
         {
-            return $this->insertRemoteBackups($wpId, $backupType, $backups);
+            return $this->insertRemoteBackups($wpId, $backupType, $identifier, $backups);
         }
         else
         {
-            return $wpdb->update($this->tableName('wp_remote_backups'), array('backups' => json_encode($backups)), array('wpid' => $wpId, 'backuptype' => $backupType));
+            if ($remoteBackups->dest_identifier == $identifier)
+            {
+                return $wpdb->update($this->tableName('wp_remote_backups'), array('backups' => json_encode($backups)), array('wpid' => $wpId, 'backuptype' => $backupType, 'dest_identifier' => $identifier));
+            }
+            else
+            {
+                $wpdb->query('UPDATE ' . $this->tableName('wp_remote_backups') . ' SET backups = "' . esc_sql(json_encode($backups)) . '", dest_identifier="'.esc_sql($identifier).'" WHERE wpid = ' . $wpId . ' AND backuptype = "' . esc_sql($backupType) . '" AND (dest_identifier IS NULL OR dest_identifier = "")');
+                return 1;
+            }
         }
     }
 

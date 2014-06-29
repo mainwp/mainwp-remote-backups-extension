@@ -24,6 +24,10 @@ class MainWPRemoteDestinationCopy extends MainWPRemoteDestination
         return $this->object->field3;
     }
 
+    public function getIdentifier()
+    {
+        return $this->object->id;
+    }
     /**
      * @param $copyApi CopyAPI
      * @param $dir
@@ -186,7 +190,7 @@ class MainWPRemoteDestinationCopy extends MainWPRemoteDestination
 
         if ($pSiteId != null)
         {
-            $backups = MainWPRemoteBackupDB::Instance()->getRemoteBackups($pSiteId, $this->getType());
+            $backups = MainWPRemoteBackupDB::Instance()->getRemoteBackups($pSiteId, $this->getType(), $this->getIdentifier());
             $backups = is_object($backups) ? json_decode($backups->backups, true) : null;
 
             if (!is_array($backups)) $backups = array();
@@ -201,7 +205,7 @@ class MainWPRemoteDestinationCopy extends MainWPRemoteDestination
             array_push($backupsTaken, $newFile);
             $backups[$pType] = $backupsTaken;
 
-            MainWPRemoteBackupDB::Instance()->updateRemoteBackups($pSiteId, $this->getType(), $backups);
+            MainWPRemoteBackupDB::Instance()->updateRemoteBackups($pSiteId, $this->getType(), $this->getIdentifier(), $backups);
         }
 
         return true;
