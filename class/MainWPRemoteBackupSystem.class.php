@@ -120,6 +120,7 @@ class MainWPRemoteBackupSystem
         $output .= ($amazonEnabled ? '<br/>AMAZON: '. $amazonNames : '');
         $output .= ($dropboxEnabled ? '<br/>DROPBOX: '. $dropboxNames : '');
         $output .= ($copyEnabled ? '<br/>COPY: '. $copyNames : '');
+
         return $output;
     }
 

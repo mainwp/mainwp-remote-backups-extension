@@ -305,7 +305,7 @@ class MainWPRemoteBackupDB
     {
         /** @var $wpdb wpdb */
         global $wpdb;
-        return $wpdb->get_results('SELECT remotedest.* FROM ' . $this->tableName('remote_dest') . ' remotedest, ' . $this->tableName('task_remote_dest') . ' tasklink WHERE tasklink.taskid = ' . (is_object($task) ? $task->id : (isset($task['id']) ? $task['id'] : $task)) . ' AND remotedest.id = tasklink.remote_dest_id ORDER BY remotedest.type, remotedest.title', OBJECT);
+        return $wpdb->get_results('SELECT remotedest.* FROM ' . $this->tableName('remote_dest') . ' remotedest, ' . $this->tableName('task_remote_dest') . ' tasklink WHERE tasklink.taskid = ' . (is_object($task) ? $task->id : (is_array($task) && isset($task['id']) ? $task['id'] : $task)) . ' AND remotedest.id = tasklink.remote_dest_id ORDER BY remotedest.type, remotedest.title', OBJECT);
     }
 
     public function getUsedRemoteDestinationsToCheck()
