@@ -60,17 +60,76 @@ class MainWPRemoteDestinationFTP extends MainWPRemoteDestination
         if ($maxBackups == 0) return $backupFiles;
         $maxBackups--;
 
-        $filesToRemove = $this->listFiles($ftp, $this->getPath(), $pRegexFile, basename($pLocalbackupfile), $backupFiles, $excludeDir);
+
+        $legacy = false;
+        foreach ($backupFiles as $backupFile)
+        {
+            if ($backupFile[1] === false)
+            {
+                $legacy = true;
+                break;
+            }
+        }
+
+        $filesToRemove = $this->listFiles($ftp, $this->getPath(), $pRegexFile, basename($pLocalbackupfile), $backupFiles, $excludeDir, $legacy);
+        if ($legacy)
+        {
+            foreach ($backupFiles as $backupFile)
+            {
+                if ($backupFile[1] !== false) continue;
+
+                $file = $backupFile[0];
+
+                $found = false;
+                foreach ($filesToRemove as $fileToRemove)
+                {
+                    if (basename($fileToRemove['f']) == $file)
+                    {
+                        $found = true;
+                        break;
+                    }
+                }
+
+                if (!$found)
+                {
+                    $filesToRemove[] = array('f' => $file, 'm' => -1);
+                }
+            }
+        }
         if (count($filesToRemove) <= $maxBackups) return $backupFiles;
+
+        $filesToRemove = MainWPRemoteDestinationUtility::sortmulti($filesToRemove, 'm', 'desc');
 
         for ($i = $maxBackups; $i < count($filesToRemove); $i++)
         {
-            $ftp->delete($filesToRemove[$i]);
-
-            if (($key = array_search(basename($filesToRemove[$i]), $backupFiles)) !== false)
+            try
             {
-                unset($backupFiles[$key]);
+                @$ftp->delete($filesToRemove[$i]['f']);
             }
+            catch (Exception $e)
+            {
+
+            }
+
+            foreach ($backupFiles as $key => $backupFile)
+            {
+                if (basename($filesToRemove[$i]['f']) == $backupFile[0])
+                {
+                    if ($backupFile[1] === false) unset($backupFiles[$key]);
+                    else
+                    {
+                        if (rtrim($backupFile[1], '/') == rtrim(dirname($filesToRemove[$i]['f']), '/'))
+                        {
+                            unset($backupFiles[$key]);
+                        }
+                    }
+                }
+            }
+
+//            if (($key = array_search(basename($filesToRemove[$i]['f']), $backupFiles)) !== false)
+//            {
+//                unset($backupFiles[$key]);
+//            }
         }
 
         return $backupFiles;
@@ -139,10 +198,23 @@ class MainWPRemoteDestinationFTP extends MainWPRemoteDestination
             {
                 $backupsTaken = $backups[$pType];
             }
+            if (count($backupsTaken) > 0)
+            {
+                $firstEl = current(array_slice($backupsTaken, -1));
+                if (!is_array($firstEl))
+                {
+                    $newBackupsTaken = array();
+                    foreach ($backupsTaken as $value)
+                    {
+                        $newBackupsTaken[] = array($value, false);
+                    }
+                    $backupsTaken = $newBackupsTaken;
+                }
+            }
 
             $backupsTaken = $this->limitFiles($ftp, $pLocalbackupfile, $pRegexFile, $backupsTaken, $dir);
 
-            array_push($backupsTaken, basename($pLocalbackupfile));
+            array_push($backupsTaken, array(basename($pLocalbackupfile), $dir));
             $backups[$pType] = $backupsTaken;
 
             MainWPRemoteBackupDB::Instance()->updateRemoteBackups($pSiteId, $this->getType(), $this->getIdentifier(), $backups);
@@ -182,50 +254,98 @@ class MainWPRemoteDestinationFTP extends MainWPRemoteDestination
             <?php
     }
 
-    //todo: Add sort on last modified!
-    private function listFiles($ftp, $dir, $regex, $exclude, &$backupFiles, $excludeDir)
+    private function listFiles($ftp, $dir, $regex, $exclude, &$backupFiles, $excludeDir, $legacy)
     {
         $files = array();
-        if ($ftp->isDir($dir))
+
+        if (!$legacy)
         {
-            $oldDir = null;
-            if (stristr($dir, ' '))
+            foreach ($backupFiles as $backupFile)
             {
-                $oldDir = $ftp->pwd();
-                $ftp->chdir($dir);
-            }
-            $filesInDir = $ftp->nlist('-t ' . ($oldDir == null ? $dir : '.'));
-            if ($oldDir != null)
-            {
-                $ftp->chdir($oldDir);
-            }
-            $inFiles = array();
-            foreach($filesInDir as $file)
-            {
-                if (MainWPRemoteDestinationUtility::startsWith($file, (substr($dir, -1) != '/' ? $dir . '/' : $dir))) $file = str_replace((substr($dir, -1) != '/' ? $dir . '/' : $dir), '', $file);
-
-                if ($file == '.' || $file == '..') continue;
-
-                $inFiles[] = $this->listFiles($ftp, (substr($dir, -1) != '/' ? $dir . '/' : $dir) . $file, $regex, $exclude, $backupFiles, $excludeDir);
-            }
-
-            foreach ($inFiles as $inFile)
-            {
-                foreach ($inFile as $file)
+                $file = $backupFile[1] . '/' . $backupFile[0];
+                if ($ftp->fileExists($file))
                 {
-                    $files[] = $file;
+                    $modificationTime = $ftp->mdtm($file);
+                    if ($modificationTime == -1)
+                    {
+                        $modificationTime = $ftp->mdtm('"' . $file . '"');
+                    }
+                    $files[] = array('f' => $file, 'm' => $modificationTime);
+                }
+                else
+                {
+                    $files[] = array('f' => $file, 'm' => 0);
                 }
             }
         }
         else
         {
-            if ($excludeDir != null)
+            if ($ftp->isDir($dir))
             {
-                if (!(stristr($dir, $excludeDir) && ($exclude == basename($dir))) &&
-                                    (preg_match('/' . $regex . '/', basename($dir)) || in_array(basename($dir), $backupFiles))) $files[] = $dir;
+                $oldDir = null;
+                if (stristr($dir, ' '))
+                {
+                    $oldDir = $ftp->pwd();
+                    $ftp->chdir($dir);
+                }
+                $filesInDir = $ftp->nlist('-t ' . ($oldDir == null ? $dir : '.'));
+                if ($oldDir != null)
+                {
+                    $ftp->chdir($oldDir);
+                }
+                $inFiles = array();
+                foreach ($filesInDir as $file)
+                {
+                    if (MainWPRemoteDestinationUtility::startsWith($file, (substr($dir, -1) != '/' ? $dir . '/' : $dir))) $file = str_replace((substr($dir, -1) != '/' ? $dir . '/' : $dir), '', $file);
+
+                    if ($file == '.' || $file == '..') continue;
+
+                    $inFiles[] = $this->listFiles($ftp, (substr($dir, -1) != '/' ? $dir . '/' : $dir) . $file, $regex, $exclude, $backupFiles, $excludeDir);
+                }
+
+                foreach ($inFiles as $inFile)
+                {
+                    foreach ($inFile as $file)
+                    {
+                        $files[] = $file;
+                    }
+                }
             }
-            else if (($exclude != basename($dir)) &&
-                    (preg_match('/' . $regex . '/', basename($dir)) || in_array(basename($dir), $backupFiles))) $files[] = $dir;
+            else
+            {
+                $add = false;
+                if ((($excludeDir != null) && !(stristr($dir, $excludeDir) && ($exclude == basename($dir)))) || ($exclude != basename($dir)))
+                {
+                    if (preg_match('/' . $regex . '/', basename($dir)))
+                    {
+                        $add = true;
+                    }
+                    else
+                    {
+                        foreach ($backupFiles as $backupFile)
+                        {
+                            if (basename($dir) == $backupFile[0])
+                            {
+                                if (($backupFile[1] === false) || (rtrim($backupFile[1], '/') == rtrim(dirname($dir), '/')))
+                                {
+                                    $add = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if ($add)
+                {
+                    $modificationTime = $ftp->mdtm($dir);
+                    if ($modificationTime == -1)
+                    {
+                        $modificationTime = $ftp->mdtm('"' . $dir . '"');
+                    }
+                    $files[] = array('f' => $dir, 'm' => $modificationTime);
+                }
+            }
         }
 
         return $files;
