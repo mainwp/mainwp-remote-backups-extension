@@ -69,7 +69,7 @@ class MainWPRemoteBackupExtension
 
     public function init()
     {
-
+        $this->mainWPRemoteBackup->init();
     }
 
     public function plugin_row_meta($plugin_meta, $plugin_file)
@@ -82,8 +82,6 @@ class MainWPRemoteBackupExtension
 
     public function admin_init()
     {
-        $this->mainWPRemoteBackup->init();
-
         wp_enqueue_style('mainwp-remote-backup-extension-css', $this->plugin_url . 'css/mainwp-remote-backup.css');
         wp_enqueue_script('mainwp-remote-backup-extension-js', $this->plugin_url . 'js/mainwp-remote-backup.js');
 

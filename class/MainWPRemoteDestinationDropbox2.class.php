@@ -244,6 +244,10 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
         }
 
         MainWPRemoteDestinationUtility::endSession();
+        @set_time_limit(0);
+        $mem =  '512M';
+        @ini_set('memory_limit', $mem);
+        @ini_set('max_execution_time', 0);
         $result = $dropbox->chunkedUpload($pLocalbackupfile, $remoteFilename, $dir, true);
         $newFile = array($result['body']->revision, $remoteFilename);
 

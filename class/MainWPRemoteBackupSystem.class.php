@@ -396,6 +396,7 @@ class MainWPRemoteBackupSystem
 
     function mainwp_postprocess_backup_site($localBackupFile, $what, $subfolder, $regexBackupFile, $website, $taskId, $unique)
     {
+        //todo: RS: add check based on task in combination with a unique identifier, indentifying this run - task last run timestamp ?
         $remote_destinations = MainWPRemoteBackupDB::Instance()->getRemoteDestinationsByTaskId($taskId);
         if (!is_array($remote_destinations)) $remote_destinations = array();
 
@@ -406,25 +407,67 @@ class MainWPRemoteBackupSystem
             $remote_destinations[$idx] = MainWPRemoteBackupDB::Instance()->getRemoteDestinationById($remote_destination);
         }
 
-        $backup_result = array();
+        $backupTaskProgress = MainWPRemoteBackupDB::Instance()->getBackupTaskProgress($taskId, $website->id);
+        if (empty($backupTaskProgress))
+        {
+            $backupTaskProgress = MainWPRemoteBackupDB::Instance()->addBackupTaskProgress($taskId, $website->id);
+        }
+        else
+        {
+            if ($backupTaskProgress->last_run < $unique)
+            {
+                $backupTaskProgress = MainWPRemoteBackupDB::Instance()->updateBackupTaskProgress($taskId, $website->id, array('last_run' => time(), 'remoteDestinations' => json_encode(array())));
+            }
+        }
+
+        $backup_result = isset($_SESSION['mainwp_remotebackup_extension_' . $unique]) && is_array($_SESSION['mainwp_remotebackup_extension_' . $unique]) ? $_SESSION['mainwp_remotebackup_extension_' . $unique] : array();
         foreach ($remote_destinations as $remote_destination_from_db)
         {
+            $remoteDestination = null;
             try
             {
                 $remoteDestination = MainWPRemoteDestination::buildRemoteDestination($remote_destination_from_db);
-                if ($remoteDestination->upload($localBackupFile, $what, $subfolder, $regexBackupFile, $website->id))
+
+                $remoteDestinations = array();
+                if (!empty($backupTaskProgress))
                 {
-                    $backup_result[$remoteDestination->getType()] = 'success';
+                    if ($backupTaskProgress->last_run >= $unique)
+                    {
+                        $remoteDestinations = $backupTaskProgress->remoteDestinations;
+                    }
                 }
+
+                try
+                {
+                    if (isset($remoteDestinations[$remote_destination_from_db->id]) && $remoteDestinations[$remote_destination_from_db->id] === true || $remoteDestinations[$remote_destination_from_db->id] > 3) continue; //already uploaded
+
+
+                    if (isset($remoteDestinations[$remote_destination_from_db->id])) $remoteDestinations[$remote_destination_from_db->id]++;
+                    else $remoteDestinations[$remote_destination_from_db->id] = 1;
+                    $backupTaskProgress = MainWPRemoteBackupDB::Instance()->updateBackupTaskProgress($taskId, $website->id, array('remoteDestinations' => json_encode($remoteDestinations)));
+
+                    session_write_close();
+                    if ($remoteDestination->upload($localBackupFile, $what, $subfolder, $regexBackupFile, $website->id))
+                    {
+                        $backup_result[$remoteDestination->getType()] = 'success';
+                    }
+                }
+                catch (Exception $e)
+                {
+                    $backup_result[$remote_destination_from_db->type] = 'Error: ' . $e->getMessage();
+                }
+
+                $remoteDestinations[$remote_destination_from_db->id] = true;
+                $backupTaskProgress = MainWPRemoteBackupDB::Instance()->updateBackupTaskProgress($taskId, $website->id, array('remoteDestinations' => json_encode($remoteDestinations)));
             }
             catch (Exception $e)
             {
                 $backup_result[$remote_destination_from_db->type] = 'Error: ' . $e->getMessage();
             }
-        }
 
-        if (session_id() == '') session_start();
-        $_SESSION['mainwp_remotebackup_extension_' . $unique] = $unique;
+            if (session_id() == '') session_start();
+            $_SESSION['mainwp_remotebackup_extension_' . $unique] = $backup_result;
+        }
     }
 
     public static function getRemoteDestinationName($type)

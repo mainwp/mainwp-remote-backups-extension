@@ -3,7 +3,7 @@
 class MainWPRemoteBackupDB
 {
     //Config
-    private $mainwp_remote_backup_extension_db_version = '1.1';
+    private $mainwp_remote_backup_extension_db_version = '1.2';
     //Private
     private $table_prefix;
     //Singleton
@@ -92,6 +92,14 @@ class MainWPRemoteBackupDB
         $tbl .= ')';
         $sql[] = $tbl;
 
+        $tbl = 'CREATE TABLE ' . $this->tableName('wp_remotebackup_progress') . ' (
+  task_id int(11) NOT NULL,
+  wp_id int(11) NOT NULL,
+  last_run int(11) NOT NULL DEFAULT 0,
+  remoteDestinations text NOT NULL DEFAULT ""
+         )';
+        $sql[] = $tbl;
+
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         foreach ($sql as $query)
         {
@@ -117,7 +125,7 @@ class MainWPRemoteBackupDB
                         if ($type != 'dropbox2' && $type != 'amazon' && $type != 'ftp' && $type != 'copy') continue;
                         if (empty($backupContent)) continue;
 
-                        $this->insertRemoteBackups($website->id, $type, $backupContent);
+                        $this->insertRemoteBackups($website->id, $type, $backupContent, array());
                     }
                 }
             }
@@ -334,6 +342,49 @@ class MainWPRemoteBackupDB
             $userid = $current_user->ID;
         }
         return $wpdb->get_results('SELECT * FROM ' . $this->tableName('remote_dest') . ($userid != null ? ' WHERE userid = ' . $userid : '') . ' ORDER BY type, title', OBJECT);
+    }
+
+    public function updateBackupTaskProgress($task_id, $wp_id, $values)
+    {
+        /** @var $wpdb wpdb */
+        global $wpdb;
+
+        $wpdb->update($this->tableName('wp_remotebackup_progress'), $values, array('task_id' => $task_id, 'wp_id' => $wp_id));
+
+        return $this->getBackupTaskProgress($task_id, $wp_id);
+    }
+
+    public function addBackupTaskProgress($task_id, $wp_id)
+    {
+        /** @var $wpdb wpdb */
+        global $wpdb;
+
+        $values = array('task_id' => $task_id,
+                'wp_id' => $wp_id,
+                'last_run' => time(),
+                'remoteDestinations' => '');
+
+        if ($wpdb->insert($this->tableName('wp_remotebackup_progress'), $values))
+        {
+            return $this->getBackupTaskProgress($task_id, $wp_id);
+        }
+
+        return null;
+    }
+
+    public function getBackupTaskProgress($task_id, $wp_id)
+    {
+        /** @var $wpdb wpdb */
+        global $wpdb;
+
+        $progress = $wpdb->get_row('SELECT * FROM ' . $this->tableName('wp_remotebackup_progress') . ' WHERE task_id= ' . $task_id . ' AND wp_id = ' . $wp_id);
+
+        if ($progress->remoteDestinations != '')
+        {
+            $progress->remoteDestinations = json_decode($progress->remoteDestinations, true);
+        }
+
+        return $progress;
     }
 
     protected function escape($data)
