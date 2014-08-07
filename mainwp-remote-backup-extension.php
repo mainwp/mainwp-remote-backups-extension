@@ -35,9 +35,6 @@ class MainWPRemoteBackupExtension
         add_action('init', array(&$this, 'init'));
         add_filter('plugin_row_meta', array(&$this, 'plugin_row_meta'), 10, 2);
 
-        register_activation_hook(__FILE__, array($this, 'activate'));
-		register_deactivation_hook(__FILE__, array($this, 'deactivate'));
-
         MainWPRemoteBackupDB::Instance()->install();
         MainWPRemoteDestination::init();
         $this->mainWPRemoteBackup = new MainWPRemoteBackupSystem();
@@ -59,14 +56,7 @@ class MainWPRemoteBackupExtension
         }
 	}
 
-    public function activate()
-    {
-    }
-
-    public function deactivate()
-    {
-	}
-
+   
     public function init()
     {
         $this->mainWPRemoteBackup->init();
@@ -87,6 +77,12 @@ class MainWPRemoteBackupExtension
 
         wp_localize_script('mainwp-remote-backup-extension-js', 'mainwp_remote_backup_security_nonces', $this->mainWPRemoteBackup->security_nonces);
     }
+}
+
+register_activation_hook(__FILE__, 'remote_backup_extension_activate');
+function remote_backup_extension_activate()
+{   
+    update_option('mainwp_remote_backup_extension_activated', 'yes');
 }
 
 class MainWPRemoteBackupExtensionActivator
@@ -110,9 +106,19 @@ class MainWPRemoteBackupExtensionActivator
         {
             add_action('mainwp-activated', array(&$this, 'activate_this_plugin'));
         }
+        add_action('admin_init', array(&$this, 'admin_init'));
         add_action('admin_notices', array(&$this, 'mainwp_error_notice'));
     }
 
+    function admin_init() {
+        if (get_option('mainwp_remote_backup_extension_activated') == 'yes')
+        {
+            delete_option('mainwp_remote_backup_extension_activated');
+            wp_redirect(admin_url('admin.php?page=Extensions'));
+            return;
+        }        
+    }
+    
     function get_this_extension($pArray)
     {
         $pArray[] = array('plugin' => __FILE__, 'api' => 'mainwp-remote-backup-extension', 'mainwp' => true, 'callback' => array(&$this, 'settings'));
