@@ -84,6 +84,12 @@ class OAuth_Consumer_Curl extends OAuth_Consumer_ConsumerAbstract
      */
     public function fetch($method, $url, $call, $additional = array())
     {
+        $bytes = null;
+        if (isset($additional['bytes']))
+        {
+            $bytes = $additional['bytes'];
+            unset($additional['bytes']);
+        }
         // Get the signed request URL
         $request = $this->getSignedRequest($method, $url, $call, $additional);
 
@@ -107,13 +113,25 @@ class OAuth_Consumer_Curl extends OAuth_Consumer_ConsumerAbstract
             $options[CURLOPT_PUT] = true;
             $options[CURLOPT_INFILE] = $this->inFile;
             // @todo Update so the data is not loaded into memory to get its size
-            $options[CURLOPT_INFILESIZE] = strlen(stream_get_contents($this->inFile));
-            fseek($this->inFile, 0);
+            if ($bytes == null)
+            {
+                $options[CURLOPT_INFILESIZE] = strlen(stream_get_contents($this->inFile));
+                fseek($this->inFile, 0);
+            }
+            else
+            {
+                $options[CURLOPT_INFILESIZE] = $bytes;
+            }
             $this->inFile = null;
         }
 
         // Set the cURL options at once
         curl_setopt_array($handle, $options);
+
+        $timeout = 20 * 60 * 60; //20 minutes
+        @curl_setopt($handle, CURLOPT_TIMEOUT, $timeout); //20minutes
+        if (!ini_get('safe_mode')) @set_time_limit($timeout); //20minutes
+        @ini_set('max_execution_time', $timeout);
 
 
         if ($this->uploadTracker != null)

@@ -150,12 +150,37 @@ class API
         if (file_exists($file)) {
             if ($handle = @fopen($file, 'r')) {
 
-                // Seek to the correct position on the file pointer
-                fseek($handle, $offset);
+                $filesize = filesize($file);
 
-                // Read from the file handle until EOF, uploading each chunk
-                while ($data = fread($handle, $this->chunkSize))
+                if ($filesize > 209715200)
                 {
+                    $this->chunkSize = 12582912;
+                }
+                else if ($filesize > 104857600)
+                {
+                    $this->chunkSize = 8388608;
+                }
+                else if ($filesize > 52428800)
+                {
+                    $this->chunkSize = 4194304;
+                }
+
+                // Seek to the correct position on the file pointer
+//                fseek($handle, $offset);
+
+                $bytesToRead = $filesize - $offset;
+                // Read from the file handle until EOF, uploading each chunk
+//                while ($data = fread($handle, $this->chunkSize))
+                while ($bytesToRead > 0)
+                {
+                    fseek($handle, $offset);
+
+                    $readNow = $this->chunkSize;
+                    if ($bytesToRead < $this->chunkSize)
+                    {
+                        $readNow = $bytesToRead;
+                    }
+
                     if ($this->tracker != null)
                     {
                         $this->tracker->setStartOffset($offset);
@@ -163,12 +188,12 @@ class API
                     }
 
                     // Open a temporary file handle and write a chunk of data to it
-                    $chunkHandle = fopen('php://temp', 'rw');
-                    fwrite($chunkHandle, $data);
+//                    $chunkHandle = fopen('php://temp', 'rw');
+//                    $bytes = fwrite($chunkHandle, $data);
 
                     // Set the file, request parameters and send the request
-                    $this->OAuth->setInFile($chunkHandle);
-                    $params = array('upload_id' => $uploadID, 'offset' => $offset);
+                    $this->OAuth->setInFile($handle);
+                    $params = array('upload_id' => $uploadID, 'offset' => $offset, 'bytes' => $readNow);
                     try {
                         // Attempt to upload the current chunk
                         $response = $this->fetch('PUT', self::CONTENT_URL, 'chunked_upload', $params);
@@ -194,8 +219,10 @@ class API
                         $this->tracker->track_upload($file, $uploadID, $offset);
                     }
 
+                    $bytesToRead = $filesize - $offset;
+
                     // Close the file handle for this chunk
-                    fclose($chunkHandle);
+//                    fclose($chunkHandle);
                 }
                 // Complete the chunked upload
                 $filename = (is_string($filename)) ? $filename : basename($file);

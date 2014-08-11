@@ -47,6 +47,12 @@ class CopyAPI
 
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+
+        $timeout = 20 * 60 * 60; //20 minutes
+        @curl_setopt($ch, CURLOPT_TIMEOUT, $timeout); //20minutes
+        if (!ini_get('safe_mode')) @set_time_limit($timeout); //20minutes
+        @ini_set('max_execution_time', $timeout);
+
         $return = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
@@ -99,6 +105,11 @@ class CopyAPI
             curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, array(&$this, '__progressCallback'));
         }
 
+        $timeout = 20 * 60 * 60; //20 minutes
+        @curl_setopt($ch, CURLOPT_TIMEOUT, $timeout); //20minutes
+        if (!ini_get('safe_mode')) @set_time_limit($timeout); //20minutes
+        @ini_set('max_execution_time', $timeout);
+
         $return = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     }
@@ -117,6 +128,12 @@ class CopyAPI
 
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+
+        $timeout = 20 * 60 * 60; //20 minutes
+        @curl_setopt($ch, CURLOPT_TIMEOUT, $timeout); //20minutes
+        if (!ini_get('safe_mode')) @set_time_limit($timeout); //20minutes
+        @ini_set('max_execution_time', $timeout);
+
         $return = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
@@ -140,6 +157,12 @@ class CopyAPI
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+
+        $timeout = 20 * 60 * 60; //20 minutes
+        @curl_setopt($ch, CURLOPT_TIMEOUT, $timeout); //20minutes
+        if (!ini_get('safe_mode')) @set_time_limit($timeout); //20minutes
+        @ini_set('max_execution_time', $timeout);
+
         $return = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 

@@ -2212,6 +2212,11 @@ final class S3Request
 			default: break;
 		}
 
+        $timeout = 20 * 60 * 60; //20 minutes
+        @curl_setopt($curl, CURLOPT_TIMEOUT, $timeout); //20minutes
+        if (!ini_get('safe_mode')) @set_time_limit($timeout); //20minutes
+        @ini_set('max_execution_time', $timeout);
+
 		// Execute, grab errors
 		if (curl_exec($curl))
 			$this->response->code = curl_getinfo($curl, CURLINFO_HTTP_CODE);

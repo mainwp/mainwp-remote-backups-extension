@@ -343,6 +343,11 @@ class MainWPRemoteDestinationCopy extends MainWPRemoteDestination
         // This tells curl to return the response as one string
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
+        $timeout = 20 * 60 * 60; //20 minutes
+        @curl_setopt($ch, CURLOPT_TIMEOUT, $timeout); //20minutes
+        if (!ini_get('safe_mode')) @set_time_limit($timeout); //20minutes
+        @ini_set('max_execution_time', $timeout);
+
         // Run curl and grab the output and the return code
         // This is the execution of step 1
         $return = curl_exec($ch);
@@ -391,6 +396,12 @@ class MainWPRemoteDestinationCopy extends MainWPRemoteDestination
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $acc_req->to_url());
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+
+        $timeout = 20 * 60 * 60; //20 minutes
+        @curl_setopt($ch, CURLOPT_TIMEOUT, $timeout); //20minutes
+        if (!ini_get('safe_mode')) @set_time_limit($timeout); //20minutes
+        @ini_set('max_execution_time', $timeout);
+
         $return = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 

@@ -342,6 +342,12 @@ class MainWPRemoteBackupSystem
 
     function mainwp_backup_upload_file()
     {
+        @ignore_user_abort(true);
+        @set_time_limit(0);
+        $mem =  '512M';
+        @ini_set('memory_limit', $mem);
+        @ini_set('max_execution_time', 0);
+
         $pFile = $_POST['file'];
         $pSubfolder = $_POST['subfolder'];
         $pType = $_POST['type'];
