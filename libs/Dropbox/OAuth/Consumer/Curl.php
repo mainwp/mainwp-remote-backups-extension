@@ -10,6 +10,9 @@
 
 class OAuth_Consumer_Curl extends OAuth_Consumer_ConsumerAbstract
 {
+    // offset for current transfer!
+    protected $currentOffset = 0;
+
     /**
      * Default cURL options
      * @var array
@@ -73,6 +76,14 @@ class OAuth_Consumer_Curl extends OAuth_Consumer_ConsumerAbstract
         $this->uploadTracker->track_upload(null, null, $uploaded, true);
     }
 
+    protected function stream_file($curl, $fileData, $fileSize)
+    {
+        fseek($fileData, $this->currentOffset);
+        $len = fread($fileData, $fileSize);
+        $this->currentOffset += strlen($len);
+        return $len;
+    }
+
     /**
      * Execute an API call
      * @todo Improve error handling
@@ -88,6 +99,7 @@ class OAuth_Consumer_Curl extends OAuth_Consumer_ConsumerAbstract
         if (isset($additional['bytes']))
         {
             $bytes = $additional['bytes'];
+            $this->currentOffset = $additional['offset'];
             unset($additional['bytes']);
         }
         // Get the signed request URL
@@ -121,6 +133,7 @@ class OAuth_Consumer_Curl extends OAuth_Consumer_ConsumerAbstract
             else
             {
                 $options[CURLOPT_INFILESIZE] = $bytes;
+                $options[CURLOPT_READFUNCTION] = array(&$this, 'stream_file');
             }
             $this->inFile = null;
         }

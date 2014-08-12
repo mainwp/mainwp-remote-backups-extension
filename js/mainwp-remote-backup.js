@@ -108,7 +108,6 @@ jQuery(document).on('click', '.remote_destination_reconnect_to_dropbox_authorize
 
 jQuery(document).on('click', '.remote_destination_connect_to_copy', function()
 {
-    console.log('test?');
     var data = {
         action:'mainwp_remotedestination_copy_connect',
         search: name

@@ -148,7 +148,7 @@ class API
     public function chunkedUpload($file, $filename = false, $path = '', $overwrite = true, $offset = 0, $uploadID = null)
     {
         if (file_exists($file)) {
-            if ($handle = @fopen($file, 'r')) {
+            if ($handle = @fopen($file, 'rb')) {
 
                 $filesize = filesize($file);
 
@@ -165,15 +165,11 @@ class API
                     $this->chunkSize = 4194304;
                 }
 
-                // Seek to the correct position on the file pointer
-//                fseek($handle, $offset);
-
                 $bytesToRead = $filesize - $offset;
                 // Read from the file handle until EOF, uploading each chunk
-//                while ($data = fread($handle, $this->chunkSize))
                 while ($bytesToRead > 0)
                 {
-                    fseek($handle, $offset);
+//                    fseek($handle, $offset);
 
                     $readNow = $this->chunkSize;
                     if ($bytesToRead < $this->chunkSize)
@@ -220,9 +216,6 @@ class API
                     }
 
                     $bytesToRead = $filesize - $offset;
-
-                    // Close the file handle for this chunk
-//                    fclose($chunkHandle);
                 }
                 // Complete the chunked upload
                 $filename = (is_string($filename)) ? $filename : basename($file);
