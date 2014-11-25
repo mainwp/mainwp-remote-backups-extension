@@ -29,7 +29,7 @@ abstract class MainWPRemoteDestination
      * @param $pType: full or not
      * @return mixed
      */
-    public abstract function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pUnique = null);
+    public abstract function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pUnique = null, $pTryResume = false);
     public abstract function getIdentifier();
     public abstract function limitFiles($ftp, $pLocalbackupfile, $pRegexFile, &$backupFiles, $dir = null);
     public abstract function test($fields = array());

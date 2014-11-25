@@ -135,7 +135,7 @@ class MainWPRemoteDestinationFTP extends MainWPRemoteDestination
         return $backupFiles;
     }
 
-    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pUnique = null)
+    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pUnique = null, $pTryResume = false)
     {
         $ftp = new Ftp();
         if ($this->getSSL() == '1') {
@@ -173,8 +173,20 @@ class MainWPRemoteDestinationFTP extends MainWPRemoteDestination
 
         if ($pLocalbackupfile != null) {
             $handle = fopen($pLocalbackupfile, 'r');
-            $ret = $ftp->nb_fput(basename($pLocalbackupfile), $handle, ($pType == 'full' ? FTP_BINARY : FTP_ASCII));
-            while ($ret == FTP_MOREDATA) {
+
+            if ($pTryResume) $ftp->set_option(FTP_AUTOSEEK, TRUE);
+
+            $ret = $ftp->nb_fput(basename($pLocalbackupfile), $handle, ($pType == 'full' ? FTP_BINARY : FTP_ASCII), $pTryResume ? FTP_AUTORESUME : 0);
+            $lastRun = 0;
+            $timeout = 20 * 60 * 60; //20 minutes
+            while ($ret == FTP_MOREDATA)
+            {
+                if (time() - $lastRun > 30)
+                {
+                    @set_time_limit($timeout); //reset timer..
+                    $lastRun = time();
+                }
+
                 if ($uploadTracker != null) $uploadTracker->track_upload($pLocalbackupfile, null, ftell($handle));
                 //Just continue uploading..
                 $ret = $ftp->nb_continue();

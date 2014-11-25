@@ -31,7 +31,7 @@ class MainWPRemoteDestinationDropbox extends MainWPRemoteDestination
         return true;
     }
 
-    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pUnique = null)
+    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pUnique = null, $pTryResume = false)
     {
         $uploader = new DropboxUploader($this->getUsername(), $this->getPassword());
         $connected = $uploader->testConnection();

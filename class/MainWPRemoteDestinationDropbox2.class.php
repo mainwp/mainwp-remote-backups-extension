@@ -179,7 +179,7 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
         return $backupFiles;
     }
 
-    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pUnique = null)
+    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pUnique = null, $pTryResume = false)
     {
         include_once mainwp_remote_backup_extension_dir() . 'Dropbox/OAuth/Consumer/ConsumerAbstract.php';
         include_once mainwp_remote_backup_extension_dir() . 'Dropbox/OAuth/Consumer/Curl.php';
@@ -219,21 +219,31 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
         try
         {
             $fileExists = $dropbox->metaData($dir . $remoteFilename);
-            if (property_exists($fileExists['body'], 'is_deleted') && $fileExists['body']->is_deleted == 1) throw new Exception('Not found');
 
-            $i = 1;
-            while ($fileExists)
+            if (!$pTryResume)
             {
-                $remoteFilename = $file . ' (' . $i . ')' . $ext;
-                $fileExists = $dropbox->metaData($dir . $remoteFilename);
                 if (property_exists($fileExists['body'], 'is_deleted') && $fileExists['body']->is_deleted == 1) throw new Exception('Not found');
 
-                $i++;
+                $i = 1;
+                while ($fileExists)
+                {
+                    $remoteFilename = $file . ' (' . $i . ')' . $ext;
+                    $fileExists = $dropbox->metaData($dir . $remoteFilename);
+                    if (property_exists($fileExists['body'], 'is_deleted') && $fileExists['body']->is_deleted == 1) throw new Exception('Not found');
+
+                    $i++;
+                }
             }
         }
         catch (Exception $e)
         {
             //File not found, so we are good to go!
+        }
+
+        $offset = 0;
+        if ($pTryResume && isset($fileExists['body']))
+        {
+            $offset = $fileExists['body']->bytes;
         }
 
 
@@ -248,7 +258,7 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
         $mem =  '512M';
         @ini_set('memory_limit', $mem);
         @ini_set('max_execution_time', 0);
-        $result = $dropbox->chunkedUpload($pLocalbackupfile, $remoteFilename, $dir, true);
+        $result = $dropbox->chunkedUpload($pLocalbackupfile, $remoteFilename, $dir, true, $offset);
         $newFile = array($result['body']->revision, $remoteFilename);
 
         $backupsTaken = array();
@@ -354,6 +364,7 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
         $dropbox = new API($oauth, 'dropbox');
 
         $accountInfo = $dropbox->accountInfo();
+
         if (is_array($accountInfo) && isset($accountInfo['body']) && isset($accountInfo['body']->uid)) return true;
 
         throw new Exception('An undefined error occured, please re-authenticate.');
