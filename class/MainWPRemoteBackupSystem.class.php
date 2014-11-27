@@ -11,6 +11,7 @@ class MainWPRemoteBackupSystem
         add_filter('mainwp_backuptask_column_destination', array(&$this, 'mainwp_backuptask_column_destination'), 10, 2);
         add_filter('mainwp_backuptask_remotedestinations', array(&$this, 'mainwp_backuptask_remotedestinations'), 10, 2);
         add_action('mainwp_remote_backup_extension_backup_upload_file', array(&$this,'mainwp_backup_upload_file'));
+        add_filter('mainwp_remote_destination_info', array(&$this,'mainwp_remote_destination_info'), 10, 2);
         add_action('mainwp_update_backuptask', array(&$this,'mainwp_update_backuptask'));
         add_action('mainwp_add_backuptask', array(&$this,'mainwp_add_backuptask'));
         add_action('mainwp_update_site', array(&$this,'mainwp_update_site'));
@@ -340,6 +341,17 @@ class MainWPRemoteBackupSystem
         die(json_encode($output));
     }
 
+    function mainwp_remote_destination_info($result, $pRemoteDestination)
+    {
+        $pRemoteDestination = MainWPRemoteBackupDB::Instance()->getRemoteDestinationById($pRemoteDestination);
+        $remoteDestination = MainWPRemoteDestination::buildRemoteDestination($pRemoteDestination);
+
+        $result['type'] = $remoteDestination->getType();
+        $result['title'] = $remoteDestination->getTitle();
+
+        return $result;
+    }
+
     function mainwp_backup_upload_file()
     {
         @ignore_user_abort(true);
@@ -368,7 +380,8 @@ class MainWPRemoteBackupSystem
 
             $website = ($pSiteId != null ? $pSiteId : null);
 
-            if ($remoteDestination->upload($pFile, $pType, $pSubfolder, $pRegexFile, $website, $pUnique))
+            $array = get_option('mainwp_upload_progress');
+            if ($remoteDestination->upload($pFile, $pType, $pSubfolder, $pRegexFile, $website, $pUnique, (is_array($array) && isset($array[$pUnique]) && ($array[$pUnique]['offset'] > 0))))
             {
                 $result['result'] = 'success';
             }

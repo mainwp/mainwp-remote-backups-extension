@@ -197,6 +197,8 @@ class MainWPRemoteDestinationFTP extends MainWPRemoteDestination
             }
         }
 
+        if ($uploadTracker != null) $uploadTracker->track_upload($pLocalbackupfile, null, null, false, true);
+
         $backupsTaken = array();
 
         if ($pSiteId != null)

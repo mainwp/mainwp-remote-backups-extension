@@ -36,9 +36,7 @@ class API
 //    private $chunkSize = 8388608;
     private $chunkSize = 2097152;
 
-    /**
-     * Object to track uploads
-     */
+    /** @var MainWPRemoteDestinationUploadTracker */
     private $tracker;
 
     /**
@@ -221,6 +219,7 @@ class API
                 $filename = (is_string($filename)) ? $filename : basename($file);
                 $call = 'commit_chunked_upload/' . $this->root . '/' . $this->encodePath(rtrim($path, '/') . '/' . $filename);
                 $params = array('overwrite' => (int) $overwrite, 'upload_id' => $uploadID);
+                if ($this->tracker) $this->tracker->track_upload(null, null, null, false, true);
                 return $this->fetch('POST', self::CONTENT_URL, $call, $params);
 
             } else {

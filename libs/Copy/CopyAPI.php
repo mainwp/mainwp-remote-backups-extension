@@ -18,6 +18,7 @@ class CopyAPI
     protected $consumer;
     protected $token;
 
+    /** @var MainWPRemoteDestinationUploadTracker */
     protected $uploadTracker;
 
     public function __construct($pConsumerKey, $pConsumerSecret, $pOauthToken, $pOauthTokenSecret)
@@ -112,6 +113,8 @@ class CopyAPI
 
         $return = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        if ($this->uploadTracker != null) $this->uploadTracker->track_upload(null, null, null, false, true);
     }
 
     public function getMeta($pFile)

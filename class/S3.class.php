@@ -1981,6 +1981,7 @@ final class S3Request
 	 */
 	public $response;
 
+    /** @var MainWPRemoteDestinationUploadTracker */
     private $uploadTracker = null;
 
 	/**
@@ -2228,6 +2229,8 @@ final class S3Request
 			);
 
 		@curl_close($curl);
+
+        if ($this->uploadTracker != null) $this->uploadTracker->track_upload(null, null, null, false, true);
 
 		// Parse body into XML
 		if ($this->response->error === false && isset($this->response->headers['type']) &&
