@@ -134,6 +134,8 @@ class Ftp
 	 */
 	public function _errorHandler($code, $message)
 	{
+        if ($code != E_USER_ERROR) return;
+
 		$this->errorMsg = $message;
 	}
 

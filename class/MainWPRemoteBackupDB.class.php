@@ -107,29 +107,6 @@ class MainWPRemoteBackupDB
         }
 
         update_option('mainwp_remote_backup_extension_db_version', $this->mainwp_remote_backup_extension_db_version);
-
-        if ($currentVersion === false || $currentVersion == '')
-        {
-            //First startup, copy from possible previous main version
-            /** @var $wpdb wpdb */
-            global $wpdb;
-            $websites = $wpdb->get_results('SELECT id,backups FROM ' . $this->tableName('wp'), OBJECT);
-            if ($websites)
-            {
-                foreach ($websites as $website)
-                {
-                    $backups = json_decode($website->backups, true);
-                    if (!is_array($backups)) continue;
-                    foreach ($backups as $type => $backupContent)
-                    {
-                        if ($type != 'dropbox2' && $type != 'amazon' && $type != 'ftp' && $type != 'copy') continue;
-                        if (empty($backupContent)) continue;
-
-                        $this->insertRemoteBackups($website->id, $type, $backupContent, array());
-                    }
-                }
-            }
-        }
     }
 
     public function insertRemoteBackups($wpId, $backupType, $identifier, $backups)

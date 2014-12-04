@@ -192,6 +192,7 @@ class MainWPRemoteDestinationFTP extends MainWPRemoteDestination
                 $ret = $ftp->nb_continue();
             }
             fclose($handle);
+
             if ($ret != FTP_FINISHED) {
                 throw new Exception('Unknown error');
             }
