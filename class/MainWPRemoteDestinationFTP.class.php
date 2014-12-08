@@ -247,7 +247,7 @@ class MainWPRemoteDestinationFTP extends MainWPRemoteDestination
                 <tr><td><?php _e('Username:','mainwp'); ?></td><td><input class="remote_destination_update_field" type="text" name="username" value="<?php echo $this->getUsername(); ?>" /></td></tr>
                 <tr><td><?php _e('Password:','mainwp'); ?></td><td><input class="remote_destination_update_field" type="password" name="password" value="<?php echo $this->getPassword(); ?>" /></td></tr>
                 <tr><td><?php _e('Remote path:','mainwp'); ?></td><td><input class="remote_destination_update_field" type="text" name="path" value="<?php echo $this->getPath(); ?>" /></td></tr>
-                <tr><td><?php _e('Use SSL:','mainwp'); ?></td><td><input type="checkbox" name="ssl" <?php echo ($this->getSSL() == '' ? 'checked' : ''); ?> /></td></tr>
+                <tr><td><?php _e('Use SSL:','mainwp'); ?></td><td><input type="checkbox" name="ssl" <?php echo ($this->getSSL() == '1' ? 'checked' : ''); ?> /></td></tr>
                 <tr><td><?php _e('Use Active mode:','mainwp'); ?></td><td><input type="checkbox" name="active" <?php echo ($this->getActive() == '1' ? 'checked' : ''); ?> /></td></tr>
             </table>
             <?php
