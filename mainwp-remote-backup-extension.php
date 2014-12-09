@@ -79,10 +79,45 @@ class MainWPRemoteBackupExtension
     }
 }
 
+
+function mainwp_remote_backup_extension_autoload($class_name)
+{
+    $allowedLoadingTypes = array('class');
+
+    foreach ($allowedLoadingTypes as $allowedLoadingType)
+    {
+        $class_file = WP_PLUGIN_DIR . DIRECTORY_SEPARATOR . str_replace(basename(__FILE__), '', plugin_basename(__FILE__)) . $allowedLoadingType . DIRECTORY_SEPARATOR . $class_name . '.' . $allowedLoadingType . '.php';
+        if (file_exists($class_file))
+        {
+            require_once($class_file);
+        }
+    }
+}
+
+if (function_exists('spl_autoload_register'))
+{
+    spl_autoload_register('mainwp_remote_backup_extension_autoload');
+}
+else
+{
+    function __autoload($class_name)
+    {
+        mainwp_remote_backup_extension_autoload($class_name);
+    }
+}
+
 register_activation_hook(__FILE__, 'remote_backup_extension_activate');
+register_deactivation_hook(__FILE__, 'remote_backup_extension_deactivate');
 function remote_backup_extension_activate()
 {   
     update_option('mainwp_remote_backup_extension_activated', 'yes');
+    $extensionActivator = new MainWPRemoteBackupExtensionActivator();
+    $extensionActivator->activate();
+}
+function remote_backup_extension_deactivate()
+{   
+    $extensionActivator = new MainWPRemoteBackupExtensionActivator();
+    $extensionActivator->deactivate();
 }
 
 class MainWPRemoteBackupExtensionActivator
@@ -91,7 +126,10 @@ class MainWPRemoteBackupExtensionActivator
     protected $childEnabled = false;
     protected $childKey = false;
     protected $childFile;
-
+    protected $plugin_handle = "mainwp-remote-backup-extension";
+    protected $product_id = "MainWP Remote Backup Extension"; 
+    protected $software_version = "0.0.5";   
+   
     public function __construct()
     {
         $this->childFile = __FILE__;
@@ -121,7 +159,7 @@ class MainWPRemoteBackupExtensionActivator
     
     function get_this_extension($pArray)
     {
-        $pArray[] = array('plugin' => __FILE__, 'api' => 'mainwp-remote-backup-extension', 'mainwp' => true, 'callback' => array(&$this, 'settings'));
+        $pArray[] = array('plugin' => __FILE__, 'api' => $this->plugin_handle, 'mainwp' => true, 'callback' => array(&$this, 'settings'), 'apiManager' => true);
         return $pArray;
     }
 
@@ -176,33 +214,31 @@ class MainWPRemoteBackupExtensionActivator
             echo '<div class="error"><p>MainWP Remote Backup Extension ' . __('requires <a href="http://mainwp.com/" target="_blank">MainWP</a> Plugin to be activated in order to work. Please install and activate <a href="http://mainwp.com/" target="_blank">MainWP</a> first.') . '</p></div>';
         }
     }
-
-}
-
-function mainwp_remote_backup_extension_autoload($class_name)
-{
-    $allowedLoadingTypes = array('class');
-
-    foreach ($allowedLoadingTypes as $allowedLoadingType)
+    
+    public function update_option($option_name, $option_value)
     {
-        $class_file = WP_PLUGIN_DIR . DIRECTORY_SEPARATOR . str_replace(basename(__FILE__), '', plugin_basename(__FILE__)) . $allowedLoadingType . DIRECTORY_SEPARATOR . $class_name . '.' . $allowedLoadingType . '.php';
-        if (file_exists($class_file))
-        {
-            require_once($class_file);
-        }
-    }
-}
+        $success = add_option($option_name, $option_value, '', 'no');
 
-if (function_exists('spl_autoload_register'))
-{
-    spl_autoload_register('mainwp_remote_backup_extension_autoload');
-}
-else
-{
-    function __autoload($class_name)
-    {
-        mainwp_remote_backup_extension_autoload($class_name);
-    }
+         if (!$success)
+         {
+             $success = update_option($option_name, $option_value);
+         }
+
+         return $success;
+    }  
+    
+    public function activate() {                          
+        $options = array (  'product_id' => $this->product_id,
+                            'activated_key' => 'Deactivated',  
+                            'instance_id' => apply_filters('mainwp-extensions-apigeneratepassword', 12, false),                            
+                            'software_version' => $this->software_version
+                        );               
+        $this->update_option($this->plugin_handle . "_APIManAdder", $options);
+    } 
+    
+    public function deactivate() {                                 
+        $this->update_option($this->plugin_handle . "_APIManAdder", '');
+    } 	    
 }
 
 function mainwp_remote_backup_extension_dir()
