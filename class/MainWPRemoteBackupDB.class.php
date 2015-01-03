@@ -3,7 +3,7 @@
 class MainWPRemoteBackupDB
 {
     //Config
-    private $mainwp_remote_backup_extension_db_version = '1.2';
+    private $mainwp_remote_backup_extension_db_version = '1.3';
     //Private
     private $table_prefix;
     //Singleton
@@ -86,9 +86,9 @@ class MainWPRemoteBackupDB
   `wpid` int(11) NOT NULL,
   `backuptype` varchar(20) NOT NULL,
   `backups` text NOT NULL,
-  `dest_identifier` text NOT NULL';
+  `dest_identifier` varchar(255) NOT NULL';
         if ($currentVersion === false || $currentVersion == '') $tbl .= ',
-  PRIMARY KEY  (wpid,backuptype)  ';
+  PRIMARY KEY  (wpid,backuptype,dest_identifier(255))  ';
         $tbl .= ')';
         $sql[] = $tbl;
 
@@ -106,7 +106,24 @@ class MainWPRemoteBackupDB
             dbDelta($query);
         }
 
+        $this->post_update();
+
         update_option('mainwp_remote_backup_extension_db_version', $this->mainwp_remote_backup_extension_db_version);
+    }
+
+
+    function post_update()
+    {
+        $currentVersion = get_site_option('mainwp_remote_backup_extension_db_version');
+        if ($currentVersion === false) return;
+
+        if (version_compare($currentVersion, '1.3', '<'))
+        {
+            /** @var $wpdb wpdb */
+            global $wpdb;
+
+            $wpdb->query('alter table `' . $this->tableName('wp_remote_backups') . '` drop primary key, add primary key(wpid,backuptype,dest_identifier(255))');
+        }
     }
 
     public function insertRemoteBackups($wpId, $backupType, $identifier, $backups)
