@@ -1,4 +1,6 @@
 <?php
+use Aws\S3\S3Client;
+
 class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
 {
     public function __construct($pObject = array('type' => 'amazon'))
@@ -39,7 +41,7 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
      * @param null $dir
      * @return mixed
      */
-    public function limitFiles($amazon, $pLocalbackupfile, $pRegexFile, &$backupFiles, $dir = null)
+    public function limitFiles($s3Client, $pLocalbackupfile, $pRegexFile, &$backupFiles, $dir = null)
     {
         $maxBackups = get_option('mainwp_backupOnExternalSources');
         if ($maxBackups === false) $maxBackups = 1;
@@ -47,14 +49,33 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
         if ($maxBackups == 0) return $backupFiles;
         $maxBackups--;
 
-        $filesToRemove = $amazon->listObjects($this->getBucket(), $pRegexFile, basename($pLocalbackupfile), $backupFiles);
+        $filesToRemove = array();
+        try
+        {
+            $result = $s3Client->listObjects(array('Bucket' => $this->getBucket()));
+            foreach ($result->get('Contents') as $content)
+            {
+                $file = $content['Key'];
+                if ((basename($pLocalbackupfile) != basename($file)) &&
+                        (preg_match('/' . $pRegexFile . '/', basename($file)) || in_array(basename($file), $backupFiles))
+                )
+                {
+                    $filesToRemove[] = array('file' => $file, 'dts' => $content['LastModified']);
+                }
+            }
+        }
+        catch (Exception $e)
+        {
+
+        }
+
         if (count($filesToRemove) <= $maxBackups) return $backupFiles;
 
         $filesToRemove = MainWPRemoteDestinationUtility::sortmulti($filesToRemove, 'dts', 'desc');
 
         for ($i = $maxBackups; $i < count($filesToRemove); $i++)
         {
-            $amazon->deleteObject($this->getBucket(), $filesToRemove[$i]['file']);
+            $s3Client->deleteObject(array('Bucket' => $this->getBucket(), 'Key' => $filesToRemove[$i]['file']));
 
             if (($key = array_search(basename($filesToRemove[$i]['file']), $backupFiles)) !== false)
             {
@@ -65,7 +86,7 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
         return $backupFiles;
     }
 
-    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pUnique = null, $pTryResume = false)
+    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pTaskId = null, $pUnique = null, $pTryResume = false)
     {
         $dir = $this->getDir();
         if ($pSubfolder !=  '')
@@ -82,32 +103,47 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
         }
 
         $amazon_uri = (($dir != '') ? $dir . '/' : '') . basename($pLocalbackupfile);
-        $uploader = new S3($this->getAccess(), $this->getSecret(), false);
-        $uploader->setExceptions(true);
+
+        $s3Client = S3Client::factory(array(
+        		'key' => $this->getAccess(),
+        		'secret' => $this->getSecret()
+        	));
+
+//        $uploader = new S3($this->getAccess(), $this->getSecret(), false);
+//        $uploader->setExceptions(true);
 
         if ($pUnique != null)
         {
-            $uploadTracker = new MainWPRemoteDestinationUploadTracker($pUnique);
-            $uploader->setUploadTracker($uploadTracker);
+            //todo: uploadTracker?
+//            $uploadTracker = new MainWPRemoteDestinationUploadTracker($pUnique);
+//            $uploader->setUploadTracker($uploadTracker);
         }
         try
         {
             $bucketLocation = null;
             try
             {
-                $bucketLocation = $uploader->getBucketLocation(urlencode($this->getBucket()));
+                $bucketLocation = $s3Client->getBucketLocation(array('Bucket' => urlencode($this->getBucket())));
             }
             catch (Exception $e)
             {
 
             }
 
-            if ($bucketLocation == null) $uploader->putBucket(urlencode($this->getBucket()));
-
+            if ($bucketLocation == null) $s3Client->createBucket(array('Bucket' => urlencode($this->getBucket())));
 
             if ($pLocalbackupfile != null)
             {
-                $uploaded = $uploader->putObjectFile($pLocalbackupfile, urlencode($this->getBucket()), $amazon_uri);
+                $metadata = array('creator' => 'MainWP');
+                if ($pSiteId != null) $metadata['mainwp-siteid'] = $pSiteId;
+                if ($pTaskId != null) $metadata['mainwp-taskid'] = $pTaskId;
+
+                $uploaded = $s3Client->putObject(array(
+                        			    'Bucket' => urlencode($this->getBucket()),
+                        			    'Key'    => $amazon_uri,
+                        			    'SourceFile' => $pLocalbackupfile,
+                                'Metadata'   => $metadata
+                        			));
                 if (!$uploaded)
                 {
                     throw new Exception('Upload failed');
@@ -128,7 +164,7 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
                     $backupsTaken = $backups[$pType];
                 }
 
-                $backupsTaken = $this->limitFiles($uploader, $pLocalbackupfile, $pRegexFile, $backupsTaken);
+                $backupsTaken = $this->limitFiles($s3Client, $pLocalbackupfile, $pRegexFile, $backupsTaken);
 
                 array_push($backupsTaken, basename($pLocalbackupfile));
                 $backups[$pType] = $backupsTaken;
@@ -211,22 +247,25 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
         $key_secret = $fields == null ? $this->getSecret() : (!isset($fields['secret']) ? null : $fields['secret']);
         $bucket_name = $fields == null ? $this->getBucket() : (!isset($fields['bucket']) ? null : $fields['bucket']);
         if (($key_id == null) || ($key_id == '') || ($key_secret == null) || ($key_secret == '') || ($bucket_name == null) || ($bucket_name == '')) throw new Exception('Please fill in all the fields');
-        $tester = new S3($key_id, $key_secret, false);
-        $tester->setExceptions(true);
+
+        $s3Client = S3Client::factory(array(
+            'key' => $key_id,
+            'secret' => $key_secret
+        ));
 
         try
         {
             $bucketLocation = null;
             try
             {
-                $bucketLocation = $tester->getBucketLocation(urlencode($bucket_name));
+                $bucketLocation = $s3Client->getBucketLocation(array('Bucket' => urlencode($bucket_name)));
             }
             catch (Exception $e)
             {
 
             }
 
-            if ($bucketLocation == null) $tester->putBucket(urlencode($bucket_name));
+            if ($bucketLocation == null) $s3Client->createBucket(array('Bucket' => urlencode($bucket_name)));
         }
         catch (S3Exception $e)
         {

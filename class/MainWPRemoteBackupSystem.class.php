@@ -381,7 +381,7 @@ class MainWPRemoteBackupSystem
             $website = ($pSiteId != null ? $pSiteId : null);
 
             $array = get_option('mainwp_upload_progress');
-            if ($remoteDestination->upload($pFile, $pType, $pSubfolder, $pRegexFile, $website, $pUnique, (is_array($array) && isset($array[$pUnique]) && ($array[$pUnique]['offset'] > 0))))
+            if ($remoteDestination->upload($pFile, $pType, $pSubfolder, $pRegexFile, $website, null, $pUnique, (is_array($array) && isset($array[$pUnique]) && ($array[$pUnique]['offset'] > 0))))
             {
                 $result['result'] = 'success';
             }
@@ -466,7 +466,7 @@ class MainWPRemoteBackupSystem
                     $backupTaskProgress = MainWPRemoteBackupDB::Instance()->updateBackupTaskProgress($taskId, $website->id, array('remoteDestinations' => json_encode($remoteDestinations)));
 
                     session_write_close();
-                    if ($remoteDestination->upload($localBackupFile, $what, $subfolder, $regexBackupFile, $website->id, null, ($remoteDestinations[$remote_destination_from_db->id] != 1)))
+                    if ($remoteDestination->upload($localBackupFile, $what, $subfolder, $regexBackupFile, $website->id, $taskId, null, ($remoteDestinations[$remote_destination_from_db->id] != 1)))
                     {
                         $backup_result[$remoteDestination->getType()] = 'success';
                     }

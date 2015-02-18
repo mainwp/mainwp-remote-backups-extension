@@ -128,7 +128,7 @@ class MainWPRemoteDestinationCopy extends MainWPRemoteDestination
         return $backupFiles;
     }
 
-    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pUnique = null, $pTryResume = false)
+    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pTaskId = null, $pUnique = null, $pTryResume = false)
     {
         $dir = $this->getDir();
         if ($pSubfolder != '')

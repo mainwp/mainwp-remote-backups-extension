@@ -179,7 +179,7 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
         return $backupFiles;
     }
 
-    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pUnique = null, $pTryResume = false)
+    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pTaskId = null, $pUnique = null, $pTryResume = false)
     {
         include_once mainwp_remote_backup_extension_dir() . 'Dropbox/OAuth/Consumer/ConsumerAbstract.php';
         include_once mainwp_remote_backup_extension_dir() . 'Dropbox/OAuth/Consumer/Curl.php';

@@ -135,7 +135,7 @@ class MainWPRemoteDestinationFTP extends MainWPRemoteDestination
         return $backupFiles;
     }
 
-    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pUnique = null, $pTryResume = false)
+    public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pTaskId = null, $pUnique = null, $pTryResume = false)
     {
         $ftp = new Ftp();
         if ($this->getSSL() == '1') {
