@@ -104,9 +104,33 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
 
         $amazon_uri = (($dir != '') ? $dir . '/' : '') . basename($pLocalbackupfile);
 
+
+        $s3Client = S3Client::factory(array(
+            'key' => $this->getAccess(),
+            'secret' => $this->getSecret()
+        ));
+
+        $bucketLocation = null;
+        try
+        {
+            $bucketLocation = $s3Client->getBucketLocation(array('Bucket' => urlencode($this->getBucket())));
+        }
+        catch (Exception $e)
+        {
+
+        }
+
+        if ($bucketLocation == null)
+        {
+            $s3Client->createBucket(array('Bucket' => urlencode($this->getBucket())));
+            $bucketLocation = $s3Client->getBucketLocation(array('Bucket' => urlencode($this->getBucket())));
+        }
+
         $s3Client = S3Client::factory(array(
         		'key' => $this->getAccess(),
-        		'secret' => $this->getSecret()
+        		'secret' => $this->getSecret(),
+                'signature' => 'v4',
+                'region' => $bucketLocation->get('Location')
         	));
 
 //        $uploader = new S3($this->getAccess(), $this->getSecret(), false);
@@ -120,18 +144,6 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
         }
         try
         {
-            $bucketLocation = null;
-            try
-            {
-                $bucketLocation = $s3Client->getBucketLocation(array('Bucket' => urlencode($this->getBucket())));
-            }
-            catch (Exception $e)
-            {
-
-            }
-
-            if ($bucketLocation == null) $s3Client->createBucket(array('Bucket' => urlencode($this->getBucket())));
-
             if ($pLocalbackupfile != null)
             {
                 $metadata = array('creator' => 'MainWP');
@@ -175,7 +187,7 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
         }
         catch (S3Exception $e)
         {
-            throw new Exception($e->getMessage() . $e->getReadableException() . (stristr($this->getBucket(), ' ') && stristr($e->getReadableException(), 'InvalidBucketName') ? ' - Bucket may not contain spaces.' : ''));
+            throw new Exception($e->getMessage());
         }
     }
 
@@ -250,8 +262,8 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
 
         $s3Client = S3Client::factory(array(
             'key' => $key_id,
-            'secret' => $key_secret
-        ));
+            'secret' => $key_secret)
+        );
 
         try
         {
@@ -269,7 +281,7 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
         }
         catch (S3Exception $e)
         {
-            throw new Exception($e->getReadableException() . (stristr($bucket_name, ' ') && stristr($e->getReadableException(), 'InvalidBucketName') ? ' - Bucket may not contain spaces.' : ''));
+            throw new Exception($e->getMessage());
         }
 
         return true;
