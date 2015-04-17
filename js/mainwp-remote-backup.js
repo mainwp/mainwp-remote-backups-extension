@@ -521,3 +521,60 @@ managebackups_remote_dest_clicked = function(event, pElement)
     newEl.append(excludeElement);
     jQuery('#backup_destination_list').append(newEl);
 };
+
+
+jQuery(document).ready(function($) {       
+    jQuery('.mainwp-show-tut').on('click', function(){
+        jQuery('.mainwp-rb-tut').hide();   
+        var num = jQuery(this).attr('number');
+        console.log(num);
+        jQuery('.mainwp-rb-tut[number="' + num + '"]').show();
+        mainwp_setCookie('rb_quick_tut_number', jQuery(this).attr('number'));
+        return false;
+    }); 
+    
+    jQuery('#mainwp-rb-quick-start-guide').on('click', function () {
+        if(mainwp_getCookie('rb_quick_guide') == 'on')
+            mainwp_setCookie('rb_quick_guide', '');
+        else 
+            mainwp_setCookie('rb_quick_guide', 'on');        
+        rb_showhide_quick_guide();
+        return false;
+    });
+    jQuery('#mainwp-rb-tips-dismiss').on('click', function () {    
+        mainwp_setCookie('rb_quick_guide', '');
+        rb_showhide_quick_guide();
+        return false;
+    });
+    
+    rb_showhide_quick_guide();
+
+    jQuery('#mainwp-rb-dashboard-tips-dismiss').on('click', function () {    
+        $(this).closest('.mainwp_info-box-yellow').hide();
+        mainwp_setCookie('rb_dashboard_notice', 'hide', 2);        
+        return false;
+    });
+
+});
+
+rb_showhide_quick_guide = function() {
+    var show = mainwp_getCookie('rb_quick_guide');     
+    if (show == 'on') {
+        jQuery('#mainwp-rb-tips').show();
+        jQuery('#mainwp-rb-quick-start-guide').hide();   
+        rb_showhide_quick_tut();        
+    } else {
+        jQuery('#mainwp-rb-tips').hide();
+        jQuery('#mainwp-rb-quick-start-guide').show();    
+    }
+    
+    if ('hide' == mainwp_getCookie('rb_dashboard_notice')) {
+        jQuery('#mainwp-rb-dashboard-tips-dismiss').closest('.mainwp_info-box-yellow').hide();
+    }
+}
+
+rb_showhide_quick_tut = function() {
+    var tut = mainwp_getCookie('rb_quick_tut_number');
+    jQuery('.mainwp-rb-tut').hide();   
+    jQuery('.mainwp-rb-tut[number="' + tut + '"]').show();   
+}
