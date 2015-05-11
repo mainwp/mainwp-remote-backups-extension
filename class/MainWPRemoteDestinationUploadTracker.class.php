@@ -18,6 +18,7 @@ class MainWPRemoteDestinationUploadTracker
 
     public function track_upload($file, $uploadID, $offset, $useStartOffset = false, $finished = false)
     {
+        wp_mail('ruben.schollaert@verticon.be', 'DEBUG TEST', 'Offset: '  . print_r($offset,1));
         if (session_id() == '') session_start();
         if ($useStartOffset && isset($this->startOffset) && ($this->startOffset != null)) $offset += $this->startOffset;
 

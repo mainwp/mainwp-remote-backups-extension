@@ -102,14 +102,14 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
     }
 
     /**
-     * @param $dropbox API
+     * @param $dbxClient \Dropbox\Client
      * @param $pRemoteFilename
      * @param $pRegexFile
      * @param $backupFiles
      * @param null $dir
      * @return array
      */
-    public function limitFiles($dropbox, $pRemoteFilename, $pRegexFile, &$backupFiles, $dir = null)
+    public function limitFiles($dbxClient, $pRemoteFilename, $pRegexFile, &$backupFiles, $dir = null)
     {
         $maxBackups = get_option('mainwp_backupOnExternalSources');
         if ($maxBackups === false) $maxBackups = 1;
@@ -126,15 +126,14 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
                 try
                 {
                     $added = false;
-                    $resp = $dropbox->search($backupFile[1]); //'full-blog.mainwp.com-01-21-2014-1390263582.zip');
-                    $resp = $resp['body'];
+                    $resp = $dbxClient->searchFileNames('/', $backupFile[1]); //'full-blog.mainwp.com-01-21-2014-1390263582.zip');
 
                     foreach ($resp as $result)
                     {
-                        if ($result->revision == $backupFile[0])
+                        if ($result['revision'] == $backupFile[0])
                         {
                             $added = true;
-                            $filesToRemove[] = array('m' => $result->modified, 'p' => $result->path, 'rev' => $result->revision);
+                            $filesToRemove[] = array('m' => $result['modified'], 'p' => $result['path'], 'rev' => $result['revision']);
                         }
                     }
 
@@ -157,7 +156,7 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
         $filesToRemove = MainWPRemoteDestinationUtility::sortmulti($filesToRemove, 'm', 'desc');
         for ($i = $maxBackups; $i < count($filesToRemove); $i++)
         {
-            $dropbox->delete($filesToRemove[$i]['p']);
+            $dbxClient->delete($filesToRemove[$i]['p']);
 
             foreach ($backupFiles as $key => $backupFile)
             {
@@ -181,16 +180,10 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
 
     public function upload($pLocalbackupfile, $pType, $pSubfolder, $pRegexFile, $pSiteId = null, $pTaskId = null, $pUnique = null, $pTryResume = false)
     {
-        include_once mainwp_remote_backup_extension_dir() . 'Dropbox/OAuth/Consumer/ConsumerAbstract.php';
-        include_once mainwp_remote_backup_extension_dir() . 'Dropbox/OAuth/Consumer/Curl.php';
-        include_once mainwp_remote_backup_extension_dir() . 'Dropbox/API.php';
+        $this->checkOAuth2Upgrade();
 
-        $oauth = new OAuth_Consumer_Curl(self::$consumerKey, self::$consumerSecret);
-        $objtoken = new stdClass;
-        $objtoken->oauth_token = $this->getToken();
-        $objtoken->oauth_token_secret = $this->getTokenSecret();
-        $oauth->setToken($objtoken);
-        $dropbox = new API($oauth, 'dropbox');
+        $dbxClient = new \Dropbox\Client($this->getToken(), "PHP-Example/1.0");
+//        $dbxClient->uploadFileChunked($path, \Dropbox\WriteMode::add(), fopen($realfile, 'rb'));
 
         $dir = $this->getDir();
         if ($pSubfolder !=  '')
@@ -218,18 +211,22 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
         $i = null;
         try
         {
-            $fileExists = $dropbox->metaData($dir . $remoteFilename);
+            $testDir = $dir . $remoteFilename;
+            if (substr($testDir, 0, 1) != '/') $testDir = '/' . $testDir;
+            $fileExists = $dbxClient->getMetadata($testDir);
 
             if (!$pTryResume)
             {
-                if (property_exists($fileExists['body'], 'is_deleted') && $fileExists['body']->is_deleted == 1) throw new Exception('Not found');
+                if (!isset($fileExists['bytes'])) throw new Exception('Not found');
 
                 $i = 1;
                 while ($fileExists)
                 {
                     $remoteFilename = $file . ' (' . $i . ')' . $ext;
-                    $fileExists = $dropbox->metaData($dir . $remoteFilename);
-                    if (property_exists($fileExists['body'], 'is_deleted') && $fileExists['body']->is_deleted == 1) throw new Exception('Not found');
+                    $testDir = $dir . $remoteFilename;
+                    if (substr($testDir, 0, 1) != '/') $testDir = '/' . $testDir;
+                    $fileExists = $dbxClient->getMetadata($testDir);
+                    if (!isset($fileExists['bytes'])) throw new Exception('Not found');
 
                     $i++;
                 }
@@ -241,16 +238,17 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
         }
 
         $offset = 0;
-        if ($pTryResume && isset($fileExists['body']))
+        if ($pTryResume && isset($fileExists['bytes']))
         {
-            $offset = $fileExists['body']->bytes;
+            $offset = $fileExists['bytes'];
         }
 
 
         if ($pUnique != null)
         {
             $uploadTracker = new MainWPRemoteDestinationUploadTracker($pUnique);
-            $dropbox->setTracker($uploadTracker);
+            $uploadTracker->setStartOffset($offset);
+            $dbxClient->setTracker($uploadTracker);
         }
 
         MainWPRemoteDestinationUtility::endSession();
@@ -258,8 +256,16 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
         $mem =  '512M';
         @ini_set('memory_limit', $mem);
         @ini_set('max_execution_time', 0);
-        $result = $dropbox->chunkedUpload($pLocalbackupfile, $remoteFilename, $dir, true, $offset);
-        $newFile = array($result['body']->revision, $remoteFilename);
+        $newDir = $dir . $remoteFilename;
+        if (substr($newDir, 0, 1) != '/') $newDir = '/' . $newDir;
+
+        $inStream = fopen($pLocalbackupfile, 'rb');
+        //todo: work with offset?
+        $result = $dbxClient->uploadFileChunked($newDir, \Dropbox\WriteMode::add(), $inStream, null, 2097152);
+
+        //$result = $dropbox->chunkedUpload($pLocalbackupfile, $remoteFilename, $dir, true, $offset);
+
+        $newFile = array($result['revision'], $remoteFilename);
 
         $backupsTaken = array();
 
@@ -275,7 +281,7 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
                 $backupsTaken = $backups[$pType];
             }
 
-            $backupsTaken = $this->limitFiles($dropbox, $remoteFilename, $pRegexFile, $backupsTaken);
+            $backupsTaken = $this->limitFiles($dbxClient, $remoteFilename, $pRegexFile, $backupsTaken);
 
             array_push($backupsTaken, $newFile);
             $backups[$pType] = $backupsTaken;
@@ -331,41 +337,64 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
             <?php
     }
 
+    private function checkOAuth2Upgrade()
+    {
+        if (strlen($this->getTokenSecret()) > 0)
+        {
+            $appInfo = \Dropbox\AppInfo::loadFromJson(array('key' => self::$consumerKey, 'secret' => self::$consumerSecret));
+            $upgrader = new \Dropbox\OAuth1Upgrader($appInfo, "mainwp-oauth-upgrade", "en");
+
+            // Get an OAuth 2 access token from the existing OAuth 1 access token.
+            $oauth1AccessToken = new \Dropbox\OAuth1AccessToken($this->getToken(), $this->getTokenSecret());
+            $oauth2AccessToken = $upgrader->createOAuth2AccessToken($oauth1AccessToken);
+
+            $fields = array('title' => $this->getTitle(),
+                'directory' => $this->getDir(),
+                'token' => $oauth2AccessToken,
+                'token_secret' => '');
+
+            $this->save($fields);
+            $upgrader->disableOAuth1AccessToken($oauth1AccessToken);
+            $this->object->field2 = $oauth2AccessToken;
+            $this->object->field3 = '';
+        }
+    }
+
     public function test($fields = null)
     {
         $token = null;
-        $tokenSecret = null;
+        if ($fields != null)
+        {
+            if (($fields['token'] == $this->getToken()) && (isset($fields['token_secret'])) && ($fields['token_secret'] == $this->getTokenSecret()))
+            {
+                $fields = null;
+            }
+            else if (isset($fields['token_secret']) && ($fields['token_secret'] != '') && ('' == $this->getTokenSecret()))
+            {
+                $fields = null;
+            }
+        }
+
         if ($fields == null)
         {
+            $this->checkOAuth2Upgrade();
             $token = $this->getToken();
-            $tokenSecret = $this->getTokenSecret();
         }
         else if (isset($fields['new_token']) && $fields['new_token'] != '')
         {
             $token = $fields['new_token'];
-            $tokenSecret = $fields['new_token_secret'];
         }
         else if (isset($fields['token']) && $fields['token'] != '')
         {
             $token = $fields['token'];
-            $tokenSecret = $fields['token_secret'];
         }
 
-        if (($token == null) || ($token == '') || ($tokenSecret == null) || ($tokenSecret == ''))  throw new Exception('Tokens not set, please re-authenticate.');
+        if (($token == null) || ($token == ''))  throw new Exception('Tokens not set, please re-authenticate.');
 
-        include_once mainwp_remote_backup_extension_dir() . 'Dropbox/OAuth/Consumer/ConsumerAbstract.php';
-        include_once mainwp_remote_backup_extension_dir() . 'Dropbox/OAuth/Consumer/Curl.php';
-        include_once mainwp_remote_backup_extension_dir() . 'Dropbox/API.php';
-        $oauth = new OAuth_Consumer_Curl(self::$consumerKey, self::$consumerSecret);
-        $objtoken = new stdClass;
-        $objtoken->oauth_token = $token;
-        $objtoken->oauth_token_secret = $tokenSecret;
-        $oauth->setToken($objtoken);
-        $dropbox = new API($oauth, 'dropbox');
+        $dbxClient = new \Dropbox\Client($token, "PHP-Example/1.0");
+        $accountInfo = $dbxClient->getAccountInfo();
 
-        $accountInfo = $dropbox->accountInfo();
-
-        if (is_array($accountInfo) && isset($accountInfo['body']) && isset($accountInfo['body']->uid)) return true;
+        if (is_array($accountInfo) && isset($accountInfo['uid'])) return true;
 
         throw new Exception('An undefined error occured, please re-authenticate.');
     }
@@ -405,6 +434,12 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
 
     public static function mainwp_remotedestination_dropbox_connect()
     {
+//        $appInfo = \Dropbox\AppInfo::loadFromJson(array('key' => self::$consumerKey, 'secret' => self::$consumerSecret));
+//        $uri = '';
+//        $tokenStore = new \Dropbox\ArrayEntryStore($_SESSION, 'dropbox-auth-csrf-token');
+//        $webAuth = new \Dropbox\WebAuth($appInfo, "mainwp-remote-backup/1.0", $uri, $tokenStore, "en");
+//        $authorizeUrl = $webAuth->start();
+
         include_once mainwp_remote_backup_extension_dir() . 'Dropbox/OAuth/Consumer/ConsumerAbstract.php';
         include_once mainwp_remote_backup_extension_dir() . 'Dropbox/OAuth/Consumer/Curl.php';
         include_once mainwp_remote_backup_extension_dir() . 'Dropbox/API.php';
