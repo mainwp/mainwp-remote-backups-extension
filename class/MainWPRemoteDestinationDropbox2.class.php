@@ -13,22 +13,22 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
 
     public function getDir()
     {
-        return $this->object->field1;
+        return empty($this->object) ? null : $this->object->field1;
     }
 
     public function getToken()
     {
-        return $this->object->field2;
+        return empty($this->object) ? null : $this->object->field2;
     }
 
     public function getTokenSecret()
     {
-        return $this->object->field3;
+        return empty($this->object) ? null : $this->object->field3;
     }
 
     public function getIdentifier()
     {
-        return $this->object->id;
+        return empty($this->object) ? null : $this->object->id;
     }
 
     /**
@@ -337,39 +337,50 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
             <?php
     }
 
-    private function checkOAuth2Upgrade()
+    private function checkOAuth2Upgrade($token = null, $tokenSecret = null, $saveNewToken = true)
     {
-        if (strlen($this->getTokenSecret()) > 0)
+        if ($token == null) $token = $this->getToken();
+        if ($tokenSecret == null) $tokenSecret = $this->getTokenSecret();
+
+        if (strlen($tokenSecret) > 0)
         {
             $appInfo = \Dropbox\AppInfo::loadFromJson(array('key' => self::$consumerKey, 'secret' => self::$consumerSecret));
             $upgrader = new \Dropbox\OAuth1Upgrader($appInfo, "mainwp-oauth-upgrade", "en");
 
             // Get an OAuth 2 access token from the existing OAuth 1 access token.
-            $oauth1AccessToken = new \Dropbox\OAuth1AccessToken($this->getToken(), $this->getTokenSecret());
+            $oauth1AccessToken = new \Dropbox\OAuth1AccessToken($token, $tokenSecret);
             $oauth2AccessToken = $upgrader->createOAuth2AccessToken($oauth1AccessToken);
 
-            $fields = array('title' => $this->getTitle(),
-                'directory' => $this->getDir(),
-                'token' => $oauth2AccessToken,
-                'token_secret' => '');
+            if ($saveNewToken)
+            {
+                $fields = array('title' => $this->getTitle(),
+                    'directory' => $this->getDir(),
+                    'token' => $oauth2AccessToken,
+                    'token_secret' => '');
 
-            $this->save($fields);
-            $upgrader->disableOAuth1AccessToken($oauth1AccessToken);
-            $this->object->field2 = $oauth2AccessToken;
-            $this->object->field3 = '';
+                $this->save($fields);
+                $upgrader->disableOAuth1AccessToken($oauth1AccessToken);
+                $this->object->field2 = $oauth2AccessToken;
+                $this->object->field3 = '';
+            }
+
+            return $oauth2AccessToken;
         }
+
+        return $token;
     }
 
     public function test($fields = null)
     {
         $token = null;
+
         if ($fields != null)
         {
-            if (($fields['token'] == $this->getToken()) && (isset($fields['token_secret'])) && ($fields['token_secret'] == $this->getTokenSecret()))
+            if (($fields['token'] == $this->getToken()) && (isset($fields['token_secret'])) && ($fields['token_secret'] === $this->getTokenSecret()))
             {
                 $fields = null;
             }
-            else if (isset($fields['token_secret']) && ($fields['token_secret'] != '') && ('' == $this->getTokenSecret()))
+            else if (isset($fields['token_secret']) && ($fields['token_secret'] != '') && ('' === $this->getTokenSecret()))
             {
                 $fields = null;
             }
@@ -389,8 +400,23 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
             $token = $fields['token'];
         }
 
-        if (($token == null) || ($token == ''))  throw new Exception('Tokens not set, please re-authenticate.');
+        try
+        {
+            if (isset($fields['token_secret']))
+            {
+                $token = $this->checkOAuth2Upgrade($fields['token'], $fields['token_secret'], false);
+            }
+            else if (isset($fields['new_token_secret']))
+            {
+                $token = $this->checkOAuth2Upgrade($fields['new_token'], $fields['new_token_secret'], false);
+            }
+        }
+        catch (Exception $e)
+        {
+            $token = null;
+        }
 
+        if (($token == null) || ($token == ''))  throw new Exception('Tokens not set, please re-authenticate.');
         $dbxClient = new \Dropbox\Client($token, "PHP-Example/1.0");
         $accountInfo = $dbxClient->getAccountInfo();
 
