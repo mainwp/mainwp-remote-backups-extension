@@ -259,17 +259,17 @@ class PhpStreamRequestFactory implements StreamRequestFactoryInterface
     {
         $errors = null;
         set_error_handler(function ($_, $msg, $file, $line) use (&$errors) {
-            $errors[] = [
+            $errors[] = array(
                 'message' => $msg,
                 'file'    => $file,
                 'line'    => $line
-            ];
+            );
             return true;
         });
         $resource = call_user_func($callback);
         restore_error_handler();
 
-        if ($errors) {
+        if (!$resource) {
             $message = 'Error creating resource. ';
             foreach ($errors as $err) {
                 foreach ($err as $key => $value) {

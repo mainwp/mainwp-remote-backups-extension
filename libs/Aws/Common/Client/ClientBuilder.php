@@ -243,7 +243,7 @@ class ClientBuilder
             $this->addBackoffLogger($backoff, $config);
         }
 
-        /** @var $client AwsClientInterface */
+        /** @var AwsClientInterface $client */
         $client = new $this->clientClass($credentials, $signature, $config);
         $client->setDescription($description);
 
@@ -478,6 +478,14 @@ class ClientBuilder
             && isset($endpoint['signatureVersion'])
         ) {
             $config->set(Options::SIGNATURE, $endpoint['signatureVersion']);
+        }
+
+        // The the signing region if endpoint rule specifies one.
+        if (isset($endpoint['credentialScope'])) {
+            $scope = $endpoint['credentialScope'];
+            if (isset($scope['region'])) {
+                $config->set(Options::SIGNATURE_REGION, $scope['region']);
+            }
         }
     }
 

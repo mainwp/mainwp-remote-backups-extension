@@ -14,21 +14,9 @@
  * permissions and limitations under the License.
  */
 
-namespace Aws\Common\Facade;
+namespace Aws\S3\Exception;
 
 /**
- * Interface that defines a client facade. Facades are convenient static classes that allow you to run client methods
- * statically on a default instance from the service builder. The facades themselves are aliased into the global
- * namespace for ease of use.
- *
- * @deprecated "Facades" are being removed in version 3.0 of the SDK.
+ * There is no TagSet associated with the bucket.
  */
-interface FacadeInterface
-{
-    /**
-     * Returns the key used to access the client instance from the Service Builder
-     *
-     * @return string
-     */
-    public static function getServiceBuilderKey();
-}
+class NoSuchTagSetException extends S3Exception {}
