@@ -140,7 +140,7 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
         if ($pUnique != null)
         {
             //todo: uploadTracker?
-//            $uploadTracker = new MainWPRemoteDestinationUploadTracker($pUnique);
+            $uploadTracker = new MainWPRemoteDestinationUploadTracker($pUnique);
 //            $uploader->setUploadTracker($uploadTracker);
         }
         try
@@ -151,14 +151,82 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
                 if ($pSiteId != null) $metadata['mainwp-siteid'] = $pSiteId;
                 if ($pTaskId != null) $metadata['mainwp-taskid'] = $pTaskId;
 
-                $uploaded = $s3Client->upload(urlencode($this->getBucket()), $amazon_uri, @fopen($pLocalbackupfile, 'rb'), 'private', array('Metadata' => $metadata));
-//                $uploaded = $s3Client->putObject(array(
-//                        			    'Bucket' => urlencode($this->getBucket()),
-//                        			    'Key'    => $amazon_uri,
-//                        			    'SourceFile' => $pLocalbackupfile,
-//                                'Metadata'   => $metadata
-//                        			));
-                if (!$uploaded)
+                if (filesize($pLocalbackupfile) > (5000000 * 2))
+                {
+                    $uploadId = null;
+                    if (!empty($uploadTracker)) $uploadId = $uploadTracker->getUploadId();
+
+                    if (empty($uploadId))
+                    {
+                        // 1. Create multipart
+                        $response = $s3Client->createMultipartUpload(array(
+                            'Bucket' => $this->getBucket(),
+                            'Key'    => $amazon_uri,
+                            'Metadata' => $metadata
+                        ));
+                        $uploadId = $response['UploadId'];
+                        if (!empty($uploadTracker)) $uploadTracker->track_upload(null, $uploadId, 0, false, false);
+                    }
+
+
+                    // 2. Upload the data in parts.
+                    $file = @fopen($pLocalbackupfile, 'rb');
+
+                    $extra = null;
+                    if (!empty($uploadTracker)) $extra = $uploadTracker->getExtra();
+                    if (empty($uploadTracker) || empty($extra) || !isset($extra['partNumber']))
+                    {
+                        $parts = array();
+                        $partNumber = 1;
+                        $offset = 0;
+                        $chunkSize = ceil(filesize($pLocalbackupfile) / floor(filesize($pLocalbackupfile) / 5000000));
+                    }
+                    else
+                    {
+                        $parts = $extra['parts'];
+                        $partNumber = $extra['partNumber'];
+                        $offset = $uploadTracker->getOffset();
+                        $chunkSize = $extra['chunkSize'];
+                        @fseek($file, $offset);
+                    }
+                    while (!feof($file)) {
+                        $data = fread($file, $chunkSize);
+                        $result = $s3Client->uploadPart(array(
+                            'Bucket'     => $this->getBucket(),
+                            'Key'        => $amazon_uri,
+                            'UploadId'   => $uploadId,
+                            'Metadata' => $metadata,
+                            'PartNumber' => $partNumber,
+                            'Body'       => $data,
+                        ));
+                        $offset += strlen($data);
+
+                        $parts[] = array(
+                            'PartNumber' => $partNumber++,
+                            'ETag'       => $result['ETag'],
+                        );
+
+                        if (!empty($uploadTracker)) $uploadTracker->track_upload(array('partNumber' => $partNumber, 'parts' => $parts, 'chunkSize' => $chunkSize), $uploadId, $offset, false, false);
+                    }
+
+                    // 3. Complete multipart upload.
+                    $result = $s3Client->completeMultipartUpload(array(
+                        'Bucket'   => $this->getBucket(),
+                        'Key'      => $amazon_uri,
+                        'UploadId' => $uploadId,
+                        'Metadata' => $metadata,
+                        'Parts'    => $parts,
+                    ));
+
+                    if (!empty($uploadTracker)) $uploadTracker->track_upload(null, $uploadId, $offset, false, true);
+                    $url = $result['Location'];
+                }
+                else
+                {
+                    $result = $s3Client->upload(urlencode($this->getBucket()), $amazon_uri, @fopen($pLocalbackupfile, 'rb'), 'private', array('Metadata' => $metadata));
+                }
+
+                if (!$result)
                 {
                     throw new Exception('Upload failed');
                 }
