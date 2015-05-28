@@ -128,12 +128,15 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
                     $added = false;
                     $resp = $dbxClient->searchFileNames('/', $backupFile[1]); //'full-blog.mainwp.com-01-21-2014-1390263582.zip');
 
-                    foreach ($resp as $result)
+                    if (is_array($resp))
                     {
-                        if ($result['revision'] == $backupFile[0])
+                        foreach ($resp as $result)
                         {
-                            $added = true;
-                            $filesToRemove[] = array('m' => $result['modified'], 'p' => $result['path'], 'rev' => $result['revision']);
+                            if ($result['revision'] == $backupFile[0])
+                            {
+                                $added = true;
+                                $filesToRemove[] = array('m' => $result['modified'], 'p' => $result['path'], 'rev' => $result['revision']);
+                            }
                         }
                     }
 
@@ -238,17 +241,15 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
         }
 
         $offset = 0;
-        if ($pTryResume && isset($fileExists['bytes']))
-        {
-            $offset = $fileExists['bytes'];
-        }
-
-
         if ($pUnique != null)
         {
             $uploadTracker = new MainWPRemoteDestinationUploadTracker($pUnique);
-            $uploadTracker->setStartOffset($offset);
             $dbxClient->setTracker($uploadTracker);
+            if ($pTryResume)
+            {
+                $uploadId = $uploadTracker->getUploadId();
+                if (!empty($uploadId)) $offset = $uploadTracker->getOffset();
+            }
         }
 
         MainWPRemoteDestinationUtility::endSession();
@@ -260,10 +261,15 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
         if (substr($newDir, 0, 1) != '/') $newDir = '/' . $newDir;
 
         $inStream = fopen($pLocalbackupfile, 'rb');
-        //todo: work with offset?
-        $result = $dbxClient->uploadFileChunked($newDir, \Dropbox\WriteMode::add(), $inStream, null, 2097152);
 
-        //$result = $dropbox->chunkedUpload($pLocalbackupfile, $remoteFilename, $dir, true, $offset);
+        if (!empty($uploadId))
+        {
+            $result = $dbxClient->continueUploadFileChunked($newDir, \Dropbox\WriteMode::add(), $inStream, null, 2097152, $uploadId, $offset);
+        }
+        else
+        {
+            $result = $dbxClient->uploadFileChunked($newDir, \Dropbox\WriteMode::add(), $inStream, null, 2097152);
+        }
 
         $newFile = array($result['revision'], $remoteFilename);
 

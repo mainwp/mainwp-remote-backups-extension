@@ -16,6 +16,26 @@ class MainWPRemoteDestinationUploadTracker
         $this->startOffset = $pOffset;
     }
 
+    public function getUploadId()
+    {
+        $array = get_option('mainwp_upload_progress');
+        if (!is_array($array)) return null;
+        if (!isset($array[$this->uniqueId])) return null;
+        if (!isset($array[$this->uniqueId]['uploadid'])) return null;
+
+        return $array[$this->uniqueId]['uploadid'];
+    }
+
+    public function getOffset()
+    {
+        $array = get_option('mainwp_upload_progress');
+        if (!is_array($array)) return 0;
+        if (!isset($array[$this->uniqueId])) return 0;
+        if (!isset($array[$this->uniqueId]['offset'])) return 0;
+
+        return $array[$this->uniqueId]['offset'];
+    }
+
     public function track_upload($file, $uploadID, $offset, $useStartOffset = false, $finished = false)
     {
         if (session_id() == '') session_start();
@@ -23,11 +43,12 @@ class MainWPRemoteDestinationUploadTracker
 
         $array = get_option('mainwp_upload_progress');
         if (!is_array($array)) $array = array();
+        $array[$this->uniqueId]['uploadid'] = $uploadID;
         if ($finished)
         {
             $array[$this->uniqueId]['finished'] = true;
         }
-        else if (!isset($array[$this->uniqueId]) || ($array[$this->uniqueId]['offset'] < $offset))
+        else if (!isset($array[$this->uniqueId]) || !isset($array[$this->uniqueId]['offset']) || ($array[$this->uniqueId]['offset'] < $offset))
         {
             $array[$this->uniqueId]['offset'] = $offset;
             $array[$this->uniqueId]['dts'] = time();

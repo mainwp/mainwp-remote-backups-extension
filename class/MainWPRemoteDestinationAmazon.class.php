@@ -132,6 +132,7 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
                 'signature' => 'v4',
                 'region' => $bucketLocation->get('Location')
         	));
+        $s3Client->setSslVerification(false, false, 0);
 
 //        $uploader = new S3($this->getAccess(), $this->getSecret(), false);
 //        $uploader->setExceptions(true);
@@ -150,12 +151,13 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
                 if ($pSiteId != null) $metadata['mainwp-siteid'] = $pSiteId;
                 if ($pTaskId != null) $metadata['mainwp-taskid'] = $pTaskId;
 
-                $uploaded = $s3Client->putObject(array(
-                        			    'Bucket' => urlencode($this->getBucket()),
-                        			    'Key'    => $amazon_uri,
-                        			    'SourceFile' => $pLocalbackupfile,
-                                'Metadata'   => $metadata
-                        			));
+                $uploaded = $s3Client->upload(urlencode($this->getBucket()), $amazon_uri, @fopen($pLocalbackupfile, 'rb'), 'private', array('Metadata' => $metadata));
+//                $uploaded = $s3Client->putObject(array(
+//                        			    'Bucket' => urlencode($this->getBucket()),
+//                        			    'Key'    => $amazon_uri,
+//                        			    'SourceFile' => $pLocalbackupfile,
+//                                'Metadata'   => $metadata
+//                        			));
                 if (!$uploaded)
                 {
                     throw new Exception('Upload failed');

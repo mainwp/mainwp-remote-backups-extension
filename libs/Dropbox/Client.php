@@ -429,7 +429,7 @@ class Client
 
         $byteOffset = $len;
 
-        if ($this->tracker) $this->tracker->track_upload(null, null, $byteOffset, true);
+        if ($this->tracker) $this->tracker->track_upload(null, $uploadId, $byteOffset, true);
 
         while (!feof($inStream)) {
             $data = self::readFully($inStream, $chunkSize);
@@ -1514,4 +1514,106 @@ class Client
    {
        $this->tracker = $tracker;
    }
+
+    //custom
+    function continueUploadFileChunked($path, $writeMode, $inStream, $numBytes = null, $chunkSize = null, $uploadId = null, $byteOffset = 0)
+    {
+        if ($chunkSize === null) {
+            $chunkSize = self::$DEFAULT_CHUNK_SIZE;
+        }
+
+        Path::checkArgNonRoot("path", $path);
+        WriteMode::checkArg("writeMode", $writeMode);
+        Checker::argResource("inStream", $inStream);
+        Checker::argNatOrNull("numBytes", $numBytes);
+        Checker::argIntPositive("chunkSize", $chunkSize);
+
+        if (empty($uploadId))
+            return $this->_uploadFileChunked($path, $writeMode, $inStream, $numBytes, $chunkSize);
+
+        return $this->_continueUploadFileChunked($path, $writeMode, $inStream, $numBytes, $chunkSize, $uploadId, $byteOffset);
+    }
+
+
+    private function _continueUploadFileChunked($path, $writeMode, $inStream, $numBytes, $chunkSize, $uploadId, $byteOffset)
+    {
+        Path::checkArg("path", $path);
+        WriteMode::checkArg("writeMode", $writeMode);
+        Checker::argResource("inStream", $inStream);
+        Checker::argNatOrNull("numBytes", $numBytes);
+        Checker::argNat("chunkSize", $chunkSize);
+
+        // NOTE: This function performs 3 retries on every call.  This is maybe not the right
+        // layer to make retry decisions.  It's also awkward because none of the other calls
+        // perform retries.
+
+        assert($chunkSize > 0);
+
+        @fseek($inStream, $byteOffset);
+//        $data = self::readFully($inStream, $chunkSize);
+//        $len = strlen($data);
+
+        $client = $this;
+//        $uploadId = RequestUtil::runWithRetry(3, function() use ($data, $client) {
+//            return $client->chunkedUploadStart($data);
+//        });
+
+//        $byteOffset = $len;
+
+//        if ($this->tracker) $this->tracker->track_upload(null, $uploadId, $byteOffset, true);
+
+        while (!feof($inStream)) {
+            $data = self::readFully($inStream, $chunkSize);
+            $len = strlen($data);
+
+            while (true) {
+                $tmpTracker = $this->tracker;
+                $r = RequestUtil::runWithRetry(3,
+                    function() use ($client, $uploadId, $byteOffset, $data, $tmpTracker) {
+                        $result = $client->chunkedUploadContinue($uploadId, $byteOffset, $data);
+
+                        if ($tmpTracker) $tmpTracker->track_upload(null, null, $byteOffset, true);
+
+                        return $result;
+                    });
+
+                if ($r === true) {  // Chunk got uploaded!
+                    $byteOffset += $len;
+                    break;
+                }
+                if ($r === false) {  // Server didn't recognize our upload ID
+                    // This is very unlikely since we're uploading all the chunks in sequence.
+                    throw new Exception_BadResponse("Server forgot our uploadId");
+                }
+
+                // Otherwise, the server is at a different byte offset from us.
+                $serverByteOffset = $r;
+                assert($serverByteOffset !== $byteOffset);  // chunkedUploadContinue ensures this.
+                // An earlier byte offset means the server has lost data we sent earlier.
+                if ($serverByteOffset < $byteOffset) throw new Exception_BadResponse(
+                    "Server is at an ealier byte offset: us=$byteOffset, server=$serverByteOffset");
+                $diff = $serverByteOffset - $byteOffset;
+                // If the server is past where we think it could possibly be, something went wrong.
+                if ($diff > $len) throw new Exception_BadResponse(
+                    "Server is more than a chunk ahead: us=$byteOffset, server=$serverByteOffset");
+                // The normal case is that the server is a bit further along than us because of a
+                // partially-uploaded chunk.  Finish it off.
+                $byteOffset += $diff;
+                if ($diff === $len) break;  // If the server is at the end, we're done.
+                $data = substr($data, $diff);
+
+                if ($this->tracker) $this->tracker->track_upload(null, null, $byteOffset, true);
+            }
+        }
+
+        if ($numBytes !== null && $byteOffset !== $numBytes) throw new \InvalidArgumentException(
+            "You passed numBytes=$numBytes but the stream had $byteOffset bytes.");
+
+        $metadata = RequestUtil::runWithRetry(3,
+            function() use ($client, $uploadId, $path, $writeMode) {
+                return $client->chunkedUploadFinish($uploadId, $path, $writeMode);
+            });
+
+        return $metadata;
+    }
 }
