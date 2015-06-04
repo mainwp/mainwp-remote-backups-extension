@@ -176,6 +176,7 @@ class MainWPRemoteDestinationFTP extends MainWPRemoteDestination
 
             if ($pTryResume) $ftp->set_option(FTP_AUTOSEEK, TRUE);
 
+            //ftp_raw($ftp_conn, "BLKSIZE=nnnn");
             $ret = $ftp->nb_fput(basename($pLocalbackupfile), $handle, ($pType == 'full' ? FTP_BINARY : FTP_ASCII), $pTryResume ? FTP_AUTORESUME : 0);
             $lastRun = 0;
             $timeout = 20 * 60 * 60; //20 minutes
