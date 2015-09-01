@@ -151,7 +151,7 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
                 if ($pSiteId != null) $metadata['mainwp-siteid'] = $pSiteId;
                 if ($pTaskId != null) $metadata['mainwp-taskid'] = $pTaskId;
 
-                if (filesize($pLocalbackupfile) > (5000000 * 2))
+                if (filesize($pLocalbackupfile) > (6000000 * 2))
                 {
                     $uploadId = null;
                     if (!empty($uploadTracker)) $uploadId = $uploadTracker->getUploadId();
@@ -179,7 +179,7 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
                         $parts = array();
                         $partNumber = 1;
                         $offset = 0;
-                        $chunkSize = ceil(filesize($pLocalbackupfile) / floor(filesize($pLocalbackupfile) / 5000000));
+                        $chunkSize = ceil(filesize($pLocalbackupfile) / floor(filesize($pLocalbackupfile) / 6000000));
                     }
                     else
                     {
@@ -191,6 +191,7 @@ class MainWPRemoteDestinationAmazon extends MainWPRemoteDestination
                     }
                     while (!feof($file)) {
                         $data = fread($file, $chunkSize);
+                        if (strlen($data) == 0) break;
                         $result = $s3Client->uploadPart(array(
                             'Bucket'     => $this->getBucket(),
                             'Key'        => $amazon_uri,

@@ -97,7 +97,14 @@ class CopyAPI
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
-        $postFields = array('file' => "@" . $pFile . ';filename='.$pRemoteFilename);
+        if (!function_exists('curl_file_create'))
+        {
+            $postFields = array('file' => "@" . $pFile . ';filename='.$pRemoteFilename);
+        }
+        else
+        {
+            $postFields = array('file' => curl_file_create($pFile, false, $pRemoteFilename));
+        }
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
 
         if ($this->uploadTracker != null)

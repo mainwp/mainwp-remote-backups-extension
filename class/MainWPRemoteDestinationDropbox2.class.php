@@ -135,7 +135,8 @@ class MainWPRemoteDestinationDropbox2 extends MainWPRemoteDestination
                             if ($result['revision'] == $backupFile[0])
                             {
                                 $added = true;
-                                $filesToRemove[] = array('m' => $result['modified'], 'p' => $result['path'], 'rev' => $result['revision']);
+                                $time = strtotime($result['modified']);
+                                $filesToRemove[] = array('m' => $time, 'p' => $result['path'], 'rev' => $result['revision']);
                             }
                         }
                     }
