@@ -83,7 +83,7 @@ class CopyAPI
 
     public function uploadFile($pFile, $pRemoteDir, $pRemoteFilename)
     {
-        $url = self::$FILEAPI . $pRemoteDir;
+        $url = self::$FILEAPI . rawurlencode($pRemoteDir);
 
         $oauth_req = SN_OAuthRequest::from_consumer_and_token($this->consumer, $this->token, 'POST', $url);
         $oauth_req->sign_request($this->signature_method, $this->consumer, $this->token);
@@ -126,7 +126,7 @@ class CopyAPI
 
     public function getMeta($pFile)
     {
-        $url = self::$METAPI . trim($pFile, '/');
+        $url = self::$METAPI . rawurlencode(trim($pFile, '/'));
 
         $oauth_req = SN_OAuthRequest::from_consumer_and_token($this->consumer, $this->token, 'GET', $url);
         $oauth_req->sign_request($this->signature_method, $this->consumer, $this->token);
@@ -154,7 +154,7 @@ class CopyAPI
 
     public function delete($pFile)
     {
-        $url = self::$FILEAPI . trim($pFile, '/');
+        $url = self::$FILEAPI . rawurlencode(trim($pFile, '/'));
 
         $oauth_req = SN_OAuthRequest::from_consumer_and_token($this->consumer, $this->token, 'DELETE', $url);
         $oauth_req->sign_request($this->signature_method, $this->consumer, $this->token);
