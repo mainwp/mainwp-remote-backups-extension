@@ -26,6 +26,11 @@ Icon URI: http://extensions.mainwp.com/wp-content/uploads/2014/01/mainwp-remote-
 = 0.0.8 = 
 * Updated: Quick start guide layout
 
+= 0.0.7 =
+* Fixed: database issue when using the same remote destination on several of tasks
+* Fixed: MD5 Hash error on Amazon S3
+* Added: resume function when upload fails
+
 = 0.0.6 =
 * Added: Support for the API Manager
 
