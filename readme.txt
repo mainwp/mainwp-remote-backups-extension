@@ -17,7 +17,7 @@ Icon URI: http://extensions.mainwp.com/wp-content/uploads/2014/01/mainwp-remote-
 
 == Changelog ==
 
-= 0.1.0 =
+= 0.1.0 = 6-5-2015
 * Enhancement: Updated S3 API
 * Enhancement: Updated Dropbox API
 * Fixed: Resume function for S3 uploads
