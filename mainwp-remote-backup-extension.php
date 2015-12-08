@@ -131,6 +131,8 @@ function remote_backup_extension_activate()
     update_option('mainwp_remote_backup_extension_activated', 'yes');
     $extensionActivator = new MainWPRemoteBackupExtensionActivator();
     $extensionActivator->activate();
+	$plugin_slug = plugin_basename(__FILE__);  	
+	do_action('mainwp_enable_extension', $plugin_slug);
 }
 function remote_backup_extension_deactivate()
 {   
