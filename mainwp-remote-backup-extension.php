@@ -73,6 +73,12 @@ class MainWPRemoteBackupExtension
     {
         if ($this->plugin_slug != $plugin_file) return $plugin_meta;
 
+		$slug = basename($plugin_file, ".php");
+		$api_data = get_option( $slug. '_APIManAdder');		
+		if (!is_array($api_data) || !isset($api_data['activated_key']) || $api_data['activated_key'] != 'Activated' || !isset($api_data['api_key']) || empty($api_data['api_key']) ) {
+			return $plugin_meta;
+		}
+		
         $plugin_meta[] = '<a href="?do=checkUpgrade" title="Check for updates.">Check for updates now</a>';
         return $plugin_meta;
     }
@@ -93,7 +99,7 @@ class MainWPRemoteBackupExtension
 					}
 				</style>
 				<tr class="plugin-update-tr active"><td colspan="3" class="plugin-update colspanchange"><div class="update-message api-deactivate">
-				<?php echo (sprintf(__("API not activated check your %sMainWP account%s for updates. For automatic update notification please activate the API.", "mainwp"), '<a href="https://extensions.mainwp.com/my-account" target="_blank">', '</a>')); ?>
+				<?php echo (sprintf(__("API not activated check your %sMainWP account%s for updates. For automatic update notification please activate the API.", "mainwp"), '<a href="https://mainwp.com/my-account" target="_blank">', '</a>')); ?>
 				</div></td></tr>
 				<?php
 			}
@@ -154,9 +160,7 @@ function remote_backup_extension_activate()
 {   
     update_option('mainwp_remote_backup_extension_activated', 'yes');
     $extensionActivator = new MainWPRemoteBackupExtensionActivator();
-    $extensionActivator->activate();
-	$plugin_slug = plugin_basename(__FILE__);  	
-	do_action('mainwp_enable_extension', $plugin_slug);
+    $extensionActivator->activate();	
 }
 function remote_backup_extension_deactivate()
 {   
@@ -210,19 +214,12 @@ class MainWPRemoteBackupExtensionActivator
     function settings()
     {
         do_action('mainwp-pageheader-extensions', __FILE__);
-        if ($this->childEnabled)
-        {
-            ?>
-            <?php self::QSGRemoteBackups(); ?>
-            <div class="mainwp_info-box">
-                    <?php _e('This extension does not have the settings page. It just adds specific options to the backup feature. Check this <a href="http://docs.mainwp.com/backup-remote-destinations/" target="_blank">document</a> if you need help with this extension.','mainwp'); ?>
-            </div>
-            <?php
-        }
-        else
-        {
-                ?><div class="mainwp_info-box-yellow"><strong><?php _e("The Extension has to be enabled to change the settings."); ?></strong></div><?php
-        }
+		?>
+		<?php self::QSGRemoteBackups(); ?>
+		<div class="mainwp_info-box">
+				<?php _e('This extension does not have the settings page. It just adds specific options to the backup feature. Check this <a href="http://docs.mainwp.com/backup-remote-destinations/" target="_blank">document</a> if you need help with this extension.','mainwp'); ?>
+		</div>
+		<?php        
         do_action('mainwp-pagefooter-extensions', __FILE__);
     }
 
@@ -313,18 +310,10 @@ class MainWPRemoteBackupExtensionActivator
     function activate_this_plugin()
     {
         $this->mainwpMainActivated = apply_filters('mainwp-activated-check', $this->mainwpMainActivated);
-
-        $this->childEnabled = apply_filters('mainwp-extension-enabled-check', __FILE__);
-        if (!$this->childEnabled) return;
-
-        $this->childEnabled = apply_filters('mainwp-extension-enabled-check', __FILE__);
-        if (!$this->childEnabled) return;
-
+        $this->childEnabled = apply_filters('mainwp-extension-enabled-check', __FILE__);        
         $this->childKey = $this->childEnabled['key'];
-
         if (function_exists("mainwp_current_user_can")&& !mainwp_current_user_can("extension", "mainwp-remote-backup-extension"))
             return;
-
         new MainWPRemoteBackupExtension();
     }
 
@@ -338,7 +327,7 @@ class MainWPRemoteBackupExtensionActivator
         global $current_screen;
         if ($current_screen->parent_base == 'plugins' && $this->mainwpMainActivated == false)
         {
-            echo '<div class="error"><p>MainWP Remote Backup Extension ' . __('requires <a href="http://mainwp.com/" target="_blank">MainWP</a> Plugin to be activated in order to work. Please install and activate <a href="http://mainwp.com/" target="_blank">MainWP</a> first.') . '</p></div>';
+            echo '<div class="error"><p>MainWP Remote Backup Extension ' . __('requires <a href="http://mainwp.com/" target="_blank">MainWP Dashboard Plugin</a> to be activated in order to work. Please install and activate <a href="http://mainwp.com/" target="_blank">MainWP Dashboard Plugin</a> first.') . '</p></div>';
         }
     }
     
