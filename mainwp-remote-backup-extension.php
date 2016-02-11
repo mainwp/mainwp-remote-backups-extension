@@ -362,5 +362,4 @@ function mainwp_remote_backup_extension_dir()
     return WP_PLUGIN_DIR . DIRECTORY_SEPARATOR . dirname(plugin_basename(__FILE__)) . DIRECTORY_SEPARATOR . 'libs' . DIRECTORY_SEPARATOR;
 }
 
-global $MainWPRemoteBackupExtensionActivator;
 new MainWPRemoteBackupExtensionActivator();
