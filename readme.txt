@@ -2,7 +2,7 @@
 Plugin Name: MainWP Remote Backup Extension
 Plugin URI: https://mainwp.com
 Description: MainWP Remote Backup Extension is an extension for the MainWP plugin that enables you store your backups on different off site locations.
-Version: 0.1.0
+Version: 1.0
 Author: MainWP
 Author URI: https://mainwp.com
 Icon URI:
@@ -16,6 +16,12 @@ Icon URI:
 1. Enable or Disable extension on the "Extensions" page in the dashboard
 
 == Changelog ==
+
+=1.0 = 2-17-2016
+* Added: An auto update warning if the extension is not activated
+* Added: Support for the new API management
+* Added: Support for WP-CLI
+* Updated: "Check for updates now" link is not vidible if extension is not activated
 
 = 0.1.0 = 6-5-2015
 * Enhancement: Updated S3 API
