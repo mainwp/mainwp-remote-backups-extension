@@ -110,7 +110,7 @@ abstract class MainWPRemoteDestination
                 <p style="color: #fff; font-size: 32px;">Connection successful!</p>
                 <p style="color: #fff; font-size: 16px;">Your MainWP dashboard is succeffully connected to the remote backup destination!</p>
             </div>
-            <div style="text-align: center; margin-top: 5em;"><a href="http://extensions.mainwp.com"><img src="http://extensions.mainwp.com/wp-content/uploads/2014/01/mainwp-remote-backups-ext-icon.png" height="100"></a></div>
+            <div style="text-align: center; margin-top: 5em;"><a href="https://mainwp.com"><img src="<?php plugins_url( 'images/remote-backups.png', dirname( __FILE__ ) );?>" height="100"></a></div>
             </div>
             <?php
             return;
@@ -122,7 +122,7 @@ abstract class MainWPRemoteDestination
                 <p style="color: #fff; font-size: 32px;">Connection Failed!</p>
                 <p style="color: #fff; font-size: 16px;">Something went wrong with connecting your MainWP dashboard to the remote backup destination!</p>
             </div>
-            <div style="text-align: center; margin-top: 5em;"><a href="http://extensions.mainwp.com"><img src="http://extensions.mainwp.com/wp-content/uploads/2014/01/mainwp-remote-backups-ext-icon.png" height="100"></a></div>
+            <div style="text-align: center; margin-top: 5em;"><a href="https://mainwp.com"><img src="<?php plugins_url( 'images/remote-backups.png', dirname( __FILE__ ) );?>" height="100"></a></div>
             </div>
         <?php
     }
