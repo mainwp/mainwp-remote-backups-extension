@@ -46,7 +46,7 @@ class MainWPRemoteDestinationUI
                                   <input type="hidden" name="remote_destination_type[]" class="remote_destination_type" value="<?php echo $remoteDest->type; ?>"/>
                                   <div class="backup_destination_type" style="background-image: url('<?php echo plugins_url('images/'.$remoteDest->type.'.png', dirname(__FILE__)) ?>')"><?php echo MainWPRemoteBackupSystem::getRemoteDestinationName($remoteDest->type); ?></div>
                                   <div class="backup_destination_title"><?php echo $remoteDest->title; ?></div>
-                                  <div class="backup_destination_settings"><?php do_action('mainwp_renderImage', 'images/icons/mainwp-settings.png', '', 'backup_destination_settings_open', 22); ?></div>
+                                  <div class="backup_destination_settings"><i class="fa fa-cog fa-2x backup_destination_settings_open"></i></div>
                                   <div class="backup_destination_settings_panel">
                                       <div class="clear"></div>
                                       <?php $remoteDestObj->buildUpdateForm(); ?>
