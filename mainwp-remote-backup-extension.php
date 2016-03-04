@@ -3,7 +3,7 @@
 Plugin Name: MainWP Remote Backup Extension
 Plugin URI: https://mainwp.com
 Description: MainWP Remote Backup Extension is an extension for the MainWP plugin that enables you store your backups on different off site locations.
-Version: 1.0
+Version: 1.1
 Author: MainWP
 Author URI: https://mainwp.com
 Icon URI:
@@ -176,7 +176,7 @@ class MainWPRemoteBackupExtensionActivator
     protected $childFile;
     protected $plugin_handle = "mainwp-remote-backup-extension";
     protected $product_id = "MainWP Remote Backup Extension"; 
-    protected $software_version = "1.0";   
+    protected $software_version = "1.1";   
    
     public function __construct()
     {
